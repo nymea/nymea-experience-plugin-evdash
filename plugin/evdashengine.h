@@ -33,14 +33,41 @@
 
 #include <QObject>
 
+class QWebSocket;
+class QWebSocketServer;
+
+class ThingManager;
+class EvDashWebServerResource;
+
 class EvDashEngine : public QObject
 {
     Q_OBJECT
 public:
-    explicit EvDashEngine(QObject *parent = nullptr);
+    explicit EvDashEngine(ThingManager *thingManager, EvDashWebServerResource *webServerResource, QObject *parent = nullptr);
+
+    ~EvDashEngine() override;
+
+    bool startWebSocket(quint16 port = 0);
+    quint16 webSocketPort() const;
+    QString webSocketPath() const;
 
 signals:
+    void webSocketListeningChanged(bool listening);
 
+private slots:
+    void handleNewConnection();
+    void handleSocketDisconnected();
+
+private:
+    ThingManager *m_thingManager = nullptr;
+    EvDashWebServerResource *m_webServerResource = nullptr;
+    QWebSocketServer *m_webSocketServer = nullptr;
+
+    QList<QWebSocket *> m_clients;
+
+    void processTextMessage(QWebSocket *socket, const QString &message);
+    QJsonObject handleApiRequest(const QJsonObject &request) const;
+    void sendReply(QWebSocket *socket, QJsonObject response) const;
 };
 
 #endif // EVDASHENGINE_H

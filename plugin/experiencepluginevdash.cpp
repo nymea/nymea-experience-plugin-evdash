@@ -50,10 +50,9 @@ void ExperiencePluginEvDash::init()
     qCDebug(dcEvDashExperience()) << "Initializing experience...";
 
     m_webServerResource = new EvDashWebServerResource(this);
+    m_engine = new EvDashEngine(thingManager(), m_webServerResource, this);
 
-    EvDashEngine *engine = new EvDashEngine(this);
-    jsonRpcServer()->registerExperienceHandler(new EvDashJsonHandler(engine, this), 1, 0);
-
+    jsonRpcServer()->registerExperienceHandler(new EvDashJsonHandler(m_engine, this), 1, 0);
 }
 
 WebServerResource *ExperiencePluginEvDash::webServerResource() const

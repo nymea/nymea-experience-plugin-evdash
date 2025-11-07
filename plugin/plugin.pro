@@ -6,8 +6,10 @@ include(../config.pri)
 CONFIG += plugin link_pkgconfig
 PKGCONFIG += nymea
 
+RESOURCES += ../dashboard.qrc
+
 QT -= gui
-QT += network sql
+QT += network sql websockets
 
 HEADERS += experiencepluginevdash.h \
     evdashengine.h \

@@ -1,0 +1,7 @@
+<RCC>
+    <qresource prefix="/dashboard"/>
+    <qresource prefix="/">
+        <file>dashboard/app.js</file>
+        <file>dashboard/index.html</file>
+    </qresource>
+</RCC>

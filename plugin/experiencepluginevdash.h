@@ -37,6 +37,7 @@
 
 Q_DECLARE_LOGGING_CATEGORY(dcEvDashExperience)
 
+class EvDashEngine;
 class EvDashWebServerResource;
 
 class ExperiencePluginEvDash: public ExperiencePlugin
@@ -53,6 +54,7 @@ public:
     WebServerResource *webServerResource() const override;
 
 private:
+    EvDashEngine *m_engine = nullptr;
     EvDashWebServerResource *m_webServerResource = nullptr;
 
 };

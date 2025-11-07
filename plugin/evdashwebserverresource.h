@@ -14,6 +14,11 @@ public:
     bool authenticationRequired() const override;
 
     HttpReply *processRequest(const HttpRequest &request) override;
+
+private:
+    HttpReply *redirectToIndex();
+
+    bool verifyStaticFile(const QString &fileName);
 };
 
 #endif // EVDASHWEBSERVERRESOURCE_H

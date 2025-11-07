@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>nymea EV Dash</title>
+    <style>
+        :root {
+            --primary-color: #0050a0;
+            --secondary-color: #00a0e0;
+            --accent-color: #f4b400;
+            --background-color: #f5f7fa;
+            --text-color: #1f2d3d;
+        }
+
+        body {
+            font-family: "Segoe UI", Roboto, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        header {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: #ffffff;
+            padding: 2rem 1.5rem;
+            text-align: center;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+        }
+
+        main {
+            flex: 1;
+            padding: 2rem 1.5rem;
+            max-width: 960px;
+            margin: 0 auto;
+        }
+
+        .card {
+            background: #ffffff;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 12px rgba(31, 45, 61, 0.08);
+            margin-bottom: 1.5rem;
+        }
+
+        .status-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-weight: 600;
+        }
+
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background-color: #d3dce6;
+            transition: background-color 0.3s ease;
+        }
+
+        .status-dot.connected {
+            background-color: #2ecc71;
+        }
+
+        .status-dot.connecting {
+            background-color: #f4b400;
+        }
+
+        .status-dot.error {
+            background-color: #e74c3c;
+        }
+
+        pre {
+            background: #f8fafc;
+            border-radius: 8px;
+            padding: 1rem;
+            overflow-x: auto;
+            font-size: 0.95rem;
+        }
+
+        footer {
+            text-align: center;
+            padding: 1rem;
+            background-color: #ffffff;
+            border-top: 1px solid #d3dce6;
+            font-size: 0.9rem;
+        }
+
+        a {
+            color: inherit;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Hello from nymea EV Dash</h1>
+        <p class="status-indicator">
+            <span id="statusDot" class="status-dot connecting" aria-hidden="true"></span>
+            <span id="connectionStatus">Connecting…</span>
+        </p>
+    </header>
+    <main>
+        <section class="card">
+            <h2>WebSocket Messages</h2>
+            <p>Outgoing JSON structure:</p>
+            <pre id="outgoingStructure"></pre>
+            <p>Last incoming JSON message:</p>
+            <pre id="incomingMessage">No messages received yet.</pre>
+        </section>
+
+        <section class="card">
+            <h2>Quick Start</h2>
+            <p>This page establishes a bidirectional WebSocket connection to the nymea EV Dash backend. Use <code>app.sendExampleMessage()</code> in the browser console to send a sample payload.</p>
+        </section>
+    </main>
+    <footer>
+        <span id="appVersion">Version 0.1.0</span> · &copy; 2013–2025 nymea GmbH. All rights reserved.
+    </footer>
+
+    <script src="app.js"></script>
+</body>
+</html>
