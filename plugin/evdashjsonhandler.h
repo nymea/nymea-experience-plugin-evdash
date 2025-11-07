@@ -45,7 +45,7 @@ public:
 
     QString name() const override;
 
-    // Q_INVOKABLE JsonReply *SetEnabled(const QVariantMap &params);
+    Q_INVOKABLE JsonReply *SetEnabled(const QVariantMap &params);
 
 signals:
     void EnabledChanged(const QVariantMap &params);
