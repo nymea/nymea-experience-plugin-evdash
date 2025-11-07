@@ -40,6 +40,7 @@ class EvDashApp {
 
         this.socket.addEventListener('open', () => {
             this.updateStatus('Connected', 'connected');
+            this.sendExampleMessage()
         });
 
         this.socket.addEventListener('message', event => {

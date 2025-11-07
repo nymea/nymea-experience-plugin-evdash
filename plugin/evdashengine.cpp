@@ -49,7 +49,28 @@ EvDashEngine::EvDashEngine(ThingManager *thingManager, EvDashWebServerResource *
     m_webServerResource{webServerResource}
 {
     m_webSocketServer = new QWebSocketServer(QStringLiteral("EvDashEngine"), QWebSocketServer::NonSecureMode, this);
-    connect(m_webSocketServer, &QWebSocketServer::newConnection, this, &EvDashEngine::handleNewConnection);
+
+    connect(m_webSocketServer, &QWebSocketServer::newConnection, this, [this](){
+        QWebSocket *socket = m_webSocketServer->nextPendingConnection();
+        if (!socket) {
+            qCWarning(dcEvDashExperience()) << "Interface: Received new connection but socket was null";
+            return;
+        }
+
+        connect(socket, &QWebSocket::textMessageReceived, this, [this, socket](const QString &message) {
+            processTextMessage(socket, message);
+        });
+
+        connect(socket, &QWebSocket::disconnected, this, [this, socket](){
+            m_clients.removeAll(socket);
+            qCDebug(dcEvDashExperience()) << "WebSocket client disconnected" << socket->peerAddress() << "Remaining clients:" << m_clients.count();
+            socket->deleteLater();
+        });
+
+        m_clients.append(socket);
+        qCDebug(dcEvDashExperience()) << "WebSocket client connected" << socket->peerAddress() << "Total clients:" << m_clients.count();
+    });
+
     connect(m_webSocketServer, &QWebSocketServer::acceptError, this, [this](QAbstractSocket::SocketError error) {
         qCWarning(dcEvDashExperience()) << "WebSocket accept error" << error << m_webSocketServer->errorString();
     });
@@ -59,25 +80,25 @@ EvDashEngine::EvDashEngine(ThingManager *thingManager, EvDashWebServerResource *
 
 EvDashEngine::~EvDashEngine()
 {
-    if (m_webSocketServer->isListening()) {
+    if (m_webSocketServer->isListening())
         m_webSocketServer->close();
-    }
 
     for (QWebSocket *client : qAsConst(m_clients)) {
-        if (client->state() == QAbstractSocket::ConnectedState) {
+        if (client->state() == QAbstractSocket::ConnectedState)
             client->close(QWebSocketProtocol::CloseCodeGoingAway, QStringLiteral("Server shutting down"));
-        }
+
         client->deleteLater();
     }
+
     m_clients.clear();
 }
 
 bool EvDashEngine::startWebSocket(quint16 port)
 {
     if (m_webSocketServer->isListening()) {
-        if (m_webSocketServer->serverPort() == port && port != 0) {
+        if (m_webSocketServer->serverPort() == port && port != 0)
             return true;
-        }
+
         m_webSocketServer->close();
     }
 
@@ -92,42 +113,6 @@ bool EvDashEngine::startWebSocket(quint16 port)
     return listening;
 }
 
-quint16 EvDashEngine::webSocketPort() const
-{
-    if (!m_webSocketServer->isListening()) {
-        return 0;
-    }
-    return m_webSocketServer->serverPort();
-}
-
-void EvDashEngine::handleNewConnection()
-{
-    QWebSocket *socket = m_webSocketServer->nextPendingConnection();
-    if (!socket) {
-        qCWarning(dcEvDashExperience()) << "Received new connection but socket was null";
-        return;
-    }
-
-    connect(socket, &QWebSocket::textMessageReceived, this, [this, socket](const QString &message) {
-        processTextMessage(socket, message);
-    });
-    connect(socket, &QWebSocket::disconnected, this, &EvDashEngine::handleSocketDisconnected);
-
-    m_clients.append(socket);
-    qCDebug(dcEvDashExperience()) << "WebSocket client connected" << socket->peerAddress() << "Total clients:" << m_clients.count();
-}
-
-void EvDashEngine::handleSocketDisconnected()
-{
-    QWebSocket *socket = qobject_cast<QWebSocket *>(sender());
-    if (!socket)
-        return;
-
-    m_clients.removeAll(socket);
-    qCDebug(dcEvDashExperience()) << "WebSocket client disconnected" << socket->peerAddress() << "Remaining clients:" << m_clients.count();
-    socket->deleteLater();
-}
-
 void EvDashEngine::processTextMessage(QWebSocket *socket, const QString &message)
 {
     if (!socket)
@@ -138,7 +123,7 @@ void EvDashEngine::processTextMessage(QWebSocket *socket, const QString &message
 
     if (parseError.error != QJsonParseError::NoError || !doc.isObject()) {
         qCWarning(dcEvDashExperience()) << "Invalid WebSocket payload" << parseError.errorString();
-        QJsonObject errorReply{
+        QJsonObject errorReply {
             {QStringLiteral("version"), QStringLiteral("1.0")},
             {QStringLiteral("event"), QStringLiteral("error")},
             {QStringLiteral("payload"), QJsonObject{
@@ -169,15 +154,16 @@ QJsonObject EvDashEngine::handleApiRequest(const QJsonObject &request) const
     const QString action = request.value(QStringLiteral("action")).toString();
 
     if (action.compare(QStringLiteral("ping"), Qt::CaseInsensitive) == 0) {
+
         response.insert(QStringLiteral("event"), QStringLiteral("statusUpdate"));
+
         QJsonObject payload;
         payload.insert(QStringLiteral("status"), QStringLiteral("ok"));
         payload.insert(QStringLiteral("timestamp"), QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs));
 
         const QJsonObject requestPayload = request.value(QStringLiteral("payload")).toObject();
-        if (!requestPayload.isEmpty()) {
+        if (!requestPayload.isEmpty())
             payload.insert(QStringLiteral("echo"), requestPayload);
-        }
 
         response.insert(QStringLiteral("payload"), payload);
     } else {

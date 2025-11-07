@@ -44,19 +44,10 @@ class EvDashEngine : public QObject
     Q_OBJECT
 public:
     explicit EvDashEngine(ThingManager *thingManager, EvDashWebServerResource *webServerResource, QObject *parent = nullptr);
-
     ~EvDashEngine() override;
-
-    bool startWebSocket(quint16 port = 0);
-    quint16 webSocketPort() const;
-    QString webSocketPath() const;
 
 signals:
     void webSocketListeningChanged(bool listening);
-
-private slots:
-    void handleNewConnection();
-    void handleSocketDisconnected();
 
 private:
     ThingManager *m_thingManager = nullptr;
@@ -65,6 +56,7 @@ private:
 
     QList<QWebSocket *> m_clients;
 
+    bool startWebSocket(quint16 port = 0);
     void processTextMessage(QWebSocket *socket, const QString &message);
     QJsonObject handleApiRequest(const QJsonObject &request) const;
     void sendReply(QWebSocket *socket, QJsonObject response) const;
