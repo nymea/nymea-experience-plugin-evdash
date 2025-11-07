@@ -120,9 +120,8 @@ void EvDashEngine::handleNewConnection()
 void EvDashEngine::handleSocketDisconnected()
 {
     QWebSocket *socket = qobject_cast<QWebSocket *>(sender());
-    if (!socket) {
+    if (!socket)
         return;
-    }
 
     m_clients.removeAll(socket);
     qCDebug(dcEvDashExperience()) << "WebSocket client disconnected" << socket->peerAddress() << "Remaining clients:" << m_clients.count();
@@ -131,15 +130,14 @@ void EvDashEngine::handleSocketDisconnected()
 
 void EvDashEngine::processTextMessage(QWebSocket *socket, const QString &message)
 {
-    if (!socket) {
+    if (!socket)
         return;
-    }
 
     QJsonParseError parseError;
     const QJsonDocument doc = QJsonDocument::fromJson(message.toUtf8(), &parseError);
+
     if (parseError.error != QJsonParseError::NoError || !doc.isObject()) {
         qCWarning(dcEvDashExperience()) << "Invalid WebSocket payload" << parseError.errorString();
-
         QJsonObject errorReply{
             {QStringLiteral("version"), QStringLiteral("1.0")},
             {QStringLiteral("event"), QStringLiteral("error")},
@@ -148,6 +146,7 @@ void EvDashEngine::processTextMessage(QWebSocket *socket, const QString &message
                                             {QStringLiteral("details"), parseError.errorString()}
                                         }}
         };
+
         sendReply(socket, errorReply);
         return;
     }
@@ -158,13 +157,14 @@ void EvDashEngine::processTextMessage(QWebSocket *socket, const QString &message
 
 QJsonObject EvDashEngine::handleApiRequest(const QJsonObject &request) const
 {
+    qCDebug(dcEvDashExperience()) << "Handle API request" << request;
+
     QJsonObject response;
     response.insert(QStringLiteral("version"), request.value(QStringLiteral("version")).toString(QStringLiteral("1.0")));
 
     const QString requestId = request.value(QStringLiteral("requestId")).toString();
-    if (!requestId.isEmpty()) {
+    if (!requestId.isEmpty())
         response.insert(QStringLiteral("requestId"), requestId);
-    }
 
     const QString action = request.value(QStringLiteral("action")).toString();
 
@@ -193,13 +193,11 @@ QJsonObject EvDashEngine::handleApiRequest(const QJsonObject &request) const
 
 void EvDashEngine::sendReply(QWebSocket *socket, QJsonObject response) const
 {
-    if (!socket) {
+    if (!socket)
         return;
-    }
 
-    if (!response.contains(QStringLiteral("version"))) {
+    if (!response.contains(QStringLiteral("version")))
         response.insert(QStringLiteral("version"), QStringLiteral("1.0"));
-    }
 
     const QJsonDocument replyDoc(response);
     socket->sendTextMessage(QString::fromUtf8(replyDoc.toJson(QJsonDocument::Compact)));
