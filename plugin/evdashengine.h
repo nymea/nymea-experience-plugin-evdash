@@ -38,6 +38,7 @@
 class QWebSocket;
 class QWebSocketServer;
 
+class Thing;
 class ThingManager;
 class EvDashWebServerResource;
 
@@ -65,6 +66,8 @@ private:
     void sendReply(QWebSocket *socket, QJsonObject response) const;
     QJsonObject createSuccessResponse(const QString &requestId, const QJsonObject &payload = {}) const;
     QJsonObject createErrorResponse(const QString &requestId, const QString &errorMessage) const;
+
+    QJsonObject packCharger(Thing *charger) const;
 };
 
 #endif // EVDASHENGINE_H

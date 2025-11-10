@@ -411,6 +411,10 @@ class DashboardApp {
         return this.sendAction('ping', { timestamp: new Date().toISOString() });
     }
 
+    sendGetChargers() {
+        return this.sendAction('GetChargers', { });
+    }
+
     updateConnectionStatus(text, state) {
         if (this.elements.connectionStatus)
             this.elements.connectionStatus.textContent = text;

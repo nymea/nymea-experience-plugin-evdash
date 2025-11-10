@@ -42,6 +42,7 @@
 #include <QJsonParseError>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QJsonArray>
 
 #include <QLoggingCategory>
 Q_DECLARE_LOGGING_CATEGORY(dcEvDashExperience)
@@ -134,6 +135,8 @@ void EvDashEngine::processTextMessage(QWebSocket *socket, const QString &message
         return;
     }
 
+    qCDebug(dcEvDashExperience()) << "-->" << qUtf8Printable(doc.toJson(QJsonDocument::Compact));
+
     const QJsonObject requestObject = doc.object();
     const QString requestId = requestObject.value(QStringLiteral("requestId")).toString();
     const QString action = requestObject.value(QStringLiteral("action")).toString();
@@ -204,6 +207,18 @@ QJsonObject EvDashEngine::handleApiRequest(QWebSocket *socket, const QJsonObject
         return createSuccessResponse(requestId, payload);
     }
 
+    if (action.compare(QStringLiteral("GetChargers"), Qt::CaseInsensitive) == 0) {
+
+        QJsonObject payload;
+        QJsonArray chargerList;
+        for (Thing *charger : m_thingManager->configuredThings().filterByInterface("evcharger")) {
+            chargerList.append(packCharger(charger));
+        }
+
+        payload.insert(QStringLiteral("chargers"), chargerList);
+        return createSuccessResponse(requestId, payload);
+    }
+
     return createErrorResponse(requestId, QStringLiteral("unknownAction"));
 }
 
@@ -213,6 +228,7 @@ void EvDashEngine::sendReply(QWebSocket *socket, QJsonObject response) const
         return;
 
     const QJsonDocument replyDoc(response);
+    qCDebug(dcEvDashExperience()) << "<--" << qUtf8Printable(replyDoc.toJson(QJsonDocument::Compact));
     socket->sendTextMessage(QString::fromUtf8(replyDoc.toJson(QJsonDocument::Compact)));
 }
 
@@ -236,4 +252,31 @@ QJsonObject EvDashEngine::createErrorResponse(const QString &requestId, const QS
     response.insert(QStringLiteral("success"), false);
     response.insert(QStringLiteral("error"), errorMessage);
     return response;
+}
+
+QJsonObject EvDashEngine::packCharger(Thing *charger) const
+{
+    QJsonObject chargerObject;
+    chargerObject.insert("id", charger->id().toString(QUuid::WithoutBraces));
+    chargerObject.insert("name", charger->name());
+    chargerObject.insert("connected", charger->stateValue("connected").toBool());
+    chargerObject.insert("chargingCurrent", charger->stateValue("maxChargingCurrent").toDouble());
+    chargerObject.insert("chargingAllowed", charger->stateValue("power").toBool());
+    chargerObject.insert("currentPower", charger->stateValue("currentPower").toBool());
+    chargerObject.insert("pluggedIn", charger->stateValue("pluggedIn").toBool());
+
+    if (charger->hasState("currentVersion"))
+        chargerObject.insert("version", charger->stateValue("currentVersion").toDouble());
+
+    if (charger->hasState("sessionEnergy"))
+        chargerObject.insert("sessionEnergy", charger->stateValue("sessionEnergy").toDouble());
+
+    if (charger->hasState("temperature"))
+        chargerObject.insert("temperature", charger->stateValue("temperature").toDouble());
+
+    if (charger->hasState("desiredPhaseCount"))
+        chargerObject.insert("chargingPhases", charger->stateValue("desiredPhaseCount").toInt());
+
+
+    return chargerObject;
 }
