@@ -1,0 +1,24 @@
+Source: nymea-experience-plugin-evdash
+Section: utils
+Priority: optional
+Maintainer: nymea GmbH <developer@nymea.io>
+Standards-Version: 4.7.2
+Homepage: https://nymea.io
+Build-Depends: debhelper,
+               dpkg-dev,
+               libnymea-dev (>= 1.14.0),
+               nymea-dev-tools:native,
+               qt6-base-dev,
+               qt6-base-dev-tools,
+               qt6-websockets-dev
+
+
+Package: nymea-experience-plugin-evdash
+Section: libs
+Architecture: any
+Multi-Arch: same
+Depends: ${shlibs:Depends},
+         ${misc:Depends},
+Description: nymea experiece plugin providing an EV Dashboard 
+ This nymea experience plugin adds support for a customizable 
+ electric vehicle monitor dashboard.
