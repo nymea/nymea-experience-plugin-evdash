@@ -67,13 +67,13 @@ EvDashEngine::EvDashEngine(ThingManager *thingManager, EvDashWebServerResource *
         connect(socket, &QWebSocket::disconnected, this, [this, socket](){
             m_clients.removeAll(socket);
             m_authenticatedClients.remove(socket);
-            qCDebug(dcEvDashExperience()) << "WebSocket client disconnected" << socket->peerAddress() << "Remaining clients:" << m_clients.count();
+            qCDebug(dcEvDashExperience()) << "WebSocket client disconnected" << socket->peerAddress().toString() << "Remaining clients:" << m_clients.count();
             socket->deleteLater();
         });
 
         m_clients.append(socket);
         m_authenticatedClients.insert(socket, QString());
-        qCDebug(dcEvDashExperience()) << "WebSocket client connected" << socket->peerAddress() << "Total clients:" << m_clients.count();
+        qCDebug(dcEvDashExperience()) << "WebSocket client connected" << socket->peerAddress().toString() << "Total clients:" << m_clients.count();
     });
 
     connect(m_webSocketServer, &QWebSocketServer::acceptError, this, [this](QAbstractSocket::SocketError error) {
@@ -108,7 +108,7 @@ bool EvDashEngine::startWebSocket(quint16 port)
         m_webSocketServer->close();
     }
 
-    const bool listening = m_webSocketServer->listen(QHostAddress::Any, port);
+    const bool listening = m_webSocketServer->listen(QHostAddress::AnyIPv4, port);
     if (listening) {
         qCDebug(dcEvDashExperience()) << "WebSocket server listening on" << m_webSocketServer->serverAddress() << m_webSocketServer->serverPort();
     } else {

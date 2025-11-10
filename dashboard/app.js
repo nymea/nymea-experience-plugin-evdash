@@ -421,6 +421,7 @@ class DashboardApp {
     }
 
     showLoginOverlay(message) {
+        this.setAuthLayout(true);
         if (this.elements.loginOverlay)
             this.elements.loginOverlay.classList.remove('hidden');
         if (typeof message === 'string' && message.length > 0)
@@ -433,6 +434,7 @@ class DashboardApp {
     }
 
     hideLoginOverlay() {
+        this.setAuthLayout(false);
         if (this.elements.loginOverlay)
             this.elements.loginOverlay.classList.add('hidden');
         this.hideLoginError();
@@ -464,6 +466,13 @@ class DashboardApp {
             return window.crypto.randomUUID();
 
         return `req-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    }
+
+    setAuthLayout(requireAuth) {
+        const body = document.body;
+        if (!body)
+            return;
+        body.classList.toggle('needs-auth', requireAuth);
     }
 }
 
