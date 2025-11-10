@@ -32,6 +32,8 @@
 #define EVDASHENGINE_H
 
 #include <QObject>
+#include <QHash>
+#include <QJsonObject>
 
 class QWebSocket;
 class QWebSocketServer;
@@ -55,11 +57,14 @@ private:
     QWebSocketServer *m_webSocketServer = nullptr;
 
     QList<QWebSocket *> m_clients;
+    QHash<QWebSocket *, QString> m_authenticatedClients;
 
     bool startWebSocket(quint16 port = 0);
     void processTextMessage(QWebSocket *socket, const QString &message);
-    QJsonObject handleApiRequest(const QJsonObject &request) const;
+    QJsonObject handleApiRequest(QWebSocket *socket, const QJsonObject &request);
     void sendReply(QWebSocket *socket, QJsonObject response) const;
+    QJsonObject createSuccessResponse(const QString &requestId, const QJsonObject &payload = {}) const;
+    QJsonObject createErrorResponse(const QString &requestId, const QString &errorMessage) const;
 };
 
 #endif // EVDASHENGINE_H

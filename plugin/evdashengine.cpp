@@ -29,16 +29,19 @@
 * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "evdashengine.h"
+#include "evdashwebserverresource.h"
 
 #include <integrations/thingmanager.h>
 
 #include <QWebSocket>
 #include <QWebSocketServer>
 #include <QHostAddress>
+#include <QWebSocketProtocol>
 
 #include <QDateTime>
 #include <QJsonParseError>
 #include <QJsonDocument>
+#include <QJsonObject>
 
 #include <QLoggingCategory>
 Q_DECLARE_LOGGING_CATEGORY(dcEvDashExperience)
@@ -63,11 +66,13 @@ EvDashEngine::EvDashEngine(ThingManager *thingManager, EvDashWebServerResource *
 
         connect(socket, &QWebSocket::disconnected, this, [this, socket](){
             m_clients.removeAll(socket);
+            m_authenticatedClients.remove(socket);
             qCDebug(dcEvDashExperience()) << "WebSocket client disconnected" << socket->peerAddress() << "Remaining clients:" << m_clients.count();
             socket->deleteLater();
         });
 
         m_clients.append(socket);
+        m_authenticatedClients.insert(socket, QString());
         qCDebug(dcEvDashExperience()) << "WebSocket client connected" << socket->peerAddress() << "Total clients:" << m_clients.count();
     });
 
@@ -91,6 +96,7 @@ EvDashEngine::~EvDashEngine()
     }
 
     m_clients.clear();
+    m_authenticatedClients.clear();
 }
 
 bool EvDashEngine::startWebSocket(quint16 port)
@@ -123,58 +129,82 @@ void EvDashEngine::processTextMessage(QWebSocket *socket, const QString &message
 
     if (parseError.error != QJsonParseError::NoError || !doc.isObject()) {
         qCWarning(dcEvDashExperience()) << "Invalid WebSocket payload" << parseError.errorString();
-        QJsonObject errorReply {
-            {QStringLiteral("version"), QStringLiteral("1.0")},
-            {QStringLiteral("event"), QStringLiteral("error")},
-            {QStringLiteral("payload"), QJsonObject{
-                                            {QStringLiteral("message"), QStringLiteral("Invalid JSON payload")},
-                                            {QStringLiteral("details"), parseError.errorString()}
-                                        }}
-        };
-
+        QJsonObject errorReply = createErrorResponse(QString(), QStringLiteral("invalidPayload"));
         sendReply(socket, errorReply);
         return;
     }
 
-    const QJsonObject response = handleApiRequest(doc.object());
+    const QJsonObject requestObject = doc.object();
+    const QString requestId = requestObject.value(QStringLiteral("requestId")).toString();
+    const QString action = requestObject.value(QStringLiteral("action")).toString();
+
+    if (action.isEmpty()) {
+        QJsonObject response = createErrorResponse(requestId, QStringLiteral("invalidAction"));
+        sendReply(socket, response);
+        return;
+    }
+
+    const bool isAuthenticateAction = action.compare(QStringLiteral("authenticate"), Qt::CaseInsensitive) == 0;
+    if (!isAuthenticateAction) {
+        const QString token = m_authenticatedClients.value(socket);
+        if (token.isEmpty()) {
+            QJsonObject response = createErrorResponse(requestId, QStringLiteral("unauthenticated"));
+            sendReply(socket, response);
+            socket->close(QWebSocketProtocol::CloseCodePolicyViolated, QStringLiteral("Authentication required"));
+            m_authenticatedClients.remove(socket);
+            return;
+        }
+    }
+
+    QJsonObject response = handleApiRequest(socket, requestObject);
     sendReply(socket, response);
+
+    if (isAuthenticateAction && !response.value(QStringLiteral("success")).toBool()) {
+        socket->close(QWebSocketProtocol::CloseCodePolicyViolated, QStringLiteral("Authentication failed"));
+        m_authenticatedClients.remove(socket);
+    }
 }
 
-QJsonObject EvDashEngine::handleApiRequest(const QJsonObject &request) const
+QJsonObject EvDashEngine::handleApiRequest(QWebSocket *socket, const QJsonObject &request)
 {
     qCDebug(dcEvDashExperience()) << "Handle API request" << request;
 
-    QJsonObject response;
-    response.insert(QStringLiteral("version"), request.value(QStringLiteral("version")).toString(QStringLiteral("1.0")));
-
     const QString requestId = request.value(QStringLiteral("requestId")).toString();
-    if (!requestId.isEmpty())
-        response.insert(QStringLiteral("requestId"), requestId);
-
     const QString action = request.value(QStringLiteral("action")).toString();
 
+    if (action.compare(QStringLiteral("authenticate"), Qt::CaseInsensitive) == 0) {
+        const QJsonObject payload = request.value(QStringLiteral("payload")).toObject();
+        const QString token = payload.value(QStringLiteral("token")).toString();
+
+        if (token.isEmpty())
+            return createErrorResponse(requestId, QStringLiteral("missingToken"));
+
+        if (!m_webServerResource || !m_webServerResource->validateToken(token)) {
+            m_authenticatedClients.remove(socket);
+            return createErrorResponse(requestId, QStringLiteral("unauthorized"));
+        }
+
+        m_authenticatedClients.insert(socket, token);
+
+        QJsonObject responsePayload {
+            {QStringLiteral("authenticated"), true},
+            {QStringLiteral("timestamp"), QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs)}
+        };
+        return createSuccessResponse(requestId, responsePayload);
+    }
+
     if (action.compare(QStringLiteral("ping"), Qt::CaseInsensitive) == 0) {
-
-        response.insert(QStringLiteral("event"), QStringLiteral("statusUpdate"));
-
         QJsonObject payload;
-        payload.insert(QStringLiteral("status"), QStringLiteral("ok"));
         payload.insert(QStringLiteral("timestamp"), QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs));
 
         const QJsonObject requestPayload = request.value(QStringLiteral("payload")).toObject();
         if (!requestPayload.isEmpty())
             payload.insert(QStringLiteral("echo"), requestPayload);
 
-        response.insert(QStringLiteral("payload"), payload);
-    } else {
-        response.insert(QStringLiteral("event"), QStringLiteral("error"));
-        QJsonObject payload;
-        payload.insert(QStringLiteral("message"), QStringLiteral("Unknown action"));
-        payload.insert(QStringLiteral("action"), action);
-        response.insert(QStringLiteral("payload"), payload);
+        return createSuccessResponse(requestId, payload);
     }
 
-    return response;
+    return createErrorResponse(requestId, QStringLiteral("unknownAction"));
 }
 
 void EvDashEngine::sendReply(QWebSocket *socket, QJsonObject response) const
@@ -182,9 +212,28 @@ void EvDashEngine::sendReply(QWebSocket *socket, QJsonObject response) const
     if (!socket)
         return;
 
-    if (!response.contains(QStringLiteral("version")))
-        response.insert(QStringLiteral("version"), QStringLiteral("1.0"));
-
     const QJsonDocument replyDoc(response);
     socket->sendTextMessage(QString::fromUtf8(replyDoc.toJson(QJsonDocument::Compact)));
+}
+
+QJsonObject EvDashEngine::createSuccessResponse(const QString &requestId, const QJsonObject &payload) const
+{
+    QJsonObject response;
+    if (!requestId.isEmpty())
+        response.insert(QStringLiteral("requestId"), requestId);
+
+    response.insert(QStringLiteral("success"), true);
+    response.insert(QStringLiteral("payload"), payload.isEmpty() ? QJsonObject{} : payload);
+    return response;
+}
+
+QJsonObject EvDashEngine::createErrorResponse(const QString &requestId, const QString &errorMessage) const
+{
+    QJsonObject response;
+    if (!requestId.isEmpty())
+        response.insert(QStringLiteral("requestId"), requestId);
+
+    response.insert(QStringLiteral("success"), false);
+    response.insert(QStringLiteral("error"), errorMessage);
+    return response;
 }
