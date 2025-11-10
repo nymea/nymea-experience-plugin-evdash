@@ -10,6 +10,7 @@ class DashboardApp {
             statusDot: document.getElementById('statusDot'),
             connectionStatus: document.getElementById('connectionStatus'),
             sessionSummary: document.getElementById('sessionSummary'),
+            logoutButton: document.getElementById('logoutButton'),
             requestTemplate: document.getElementById('requestTemplate'),
             responseTemplate: document.getElementById('responseTemplate'),
             incomingMessage: document.getElementById('incomingMessage')
@@ -22,6 +23,8 @@ class DashboardApp {
         this.username = null;
         this.pendingRequests = new Map();
         this.reconnectTimer = null;
+        this.tokenRefreshTimer = null;
+        this.refreshInFlight = false;
 
         this.renderStaticTemplates();
         this.attachEventListeners();
@@ -33,6 +36,12 @@ class DashboardApp {
             this.elements.loginForm.addEventListener('submit', event => {
                 event.preventDefault();
                 this.submitLogin();
+            });
+        }
+
+        if (this.elements.logoutButton) {
+            this.elements.logoutButton.addEventListener('click', () => {
+                this.logout();
             });
         }
     }
@@ -113,6 +122,7 @@ class DashboardApp {
             this.token = parsed.token;
             this.tokenExpiry = expiresAt;
             this.username = parsed.username || null;
+            this.scheduleTokenRefresh();
             this.updateSessionSummary();
             this.hideLoginOverlay();
             this.connectWebSocket();
@@ -216,6 +226,8 @@ class DashboardApp {
         } catch (error) {
             console.warn('Failed to persist session', error);
         }
+
+        this.scheduleTokenRefresh();
     }
 
     clearSession() {
@@ -225,12 +237,17 @@ class DashboardApp {
         this.pendingRequests.clear();
         clearTimeout(this.reconnectTimer);
         this.reconnectTimer = null;
+        clearTimeout(this.tokenRefreshTimer);
+        this.tokenRefreshTimer = null;
+        this.refreshInFlight = false;
 
         try {
             window.localStorage.removeItem(this.sessionKey);
         } catch (error) {
             console.warn('Failed to clear session', error);
         }
+
+        this.updateSessionSummary();
     }
 
     connectWebSocket(resetPending = false) {
@@ -412,12 +429,14 @@ class DashboardApp {
 
         if (!this.token) {
             this.elements.sessionSummary.textContent = 'Please sign in to start the WebSocket session.';
+            this.toggleLogoutButton(false);
             return;
         }
 
         const expires = this.tokenExpiry ? this.tokenExpiry.toISOString() : 'unknown';
         const username = this.username ? this.username : 'user';
         this.elements.sessionSummary.textContent = `Signed in as ${username}. Token valid until ${expires}.`;
+        this.toggleLogoutButton(true);
     }
 
     showLoginOverlay(message) {
@@ -473,6 +492,78 @@ class DashboardApp {
         if (!body)
             return;
         body.classList.toggle('needs-auth', requireAuth);
+    }
+
+    toggleLogoutButton(visible) {
+        if (!this.elements.logoutButton)
+            return;
+        this.elements.logoutButton.classList.toggle('hidden', !visible);
+    }
+
+    logout() {
+        this.clearSession();
+        if (this.socket && this.socket.readyState === WebSocket.OPEN)
+            this.socket.close();
+        this.updateConnectionStatus('Logged out', 'connecting');
+        this.updateSessionSummary();
+        this.showLoginOverlay('You have been logged out.');
+    }
+
+    scheduleTokenRefresh() {
+        clearTimeout(this.tokenRefreshTimer);
+        this.tokenRefreshTimer = null;
+
+        if (!this.token || !this.tokenExpiry)
+            return;
+
+        const now = Date.now();
+        const expiryTime = this.tokenExpiry.getTime();
+        const leadTimeMs = 60 * 1000; // refresh one minute before expiry
+        const delay = Math.max(expiryTime - leadTimeMs - now, 5 * 1000);
+
+        this.tokenRefreshTimer = setTimeout(() => {
+            this.refreshToken();
+        }, delay);
+    }
+
+    async refreshToken() {
+        if (!this.token || this.refreshInFlight)
+            return;
+
+        this.refreshInFlight = true;
+
+        try {
+            const response = await fetch('/evdash/api/refresh', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ token: this.token })
+            });
+
+            const data = await response.json();
+            if (!response.ok || !data.success)
+                throw new Error(data && data.error ? data.error : 'refreshFailed');
+
+            if (!data.token || !data.expiresAt)
+                throw new Error('Invalid response from server.');
+
+            this.persistSession({
+                token: data.token,
+                expiresAt: data.expiresAt,
+                username: this.username
+            });
+            this.updateSessionSummary();
+        } catch (error) {
+            console.warn('Token refresh failed', error);
+            this.clearSession();
+            this.updateConnectionStatus('Authentication required', 'error');
+            if (this.socket && this.socket.readyState === WebSocket.OPEN)
+                this.socket.close();
+            this.showLoginOverlay('Session expired. Please sign in again.');
+        } finally {
+            this.refreshInFlight = false;
+        }
     }
 }
 

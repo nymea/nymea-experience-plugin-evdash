@@ -29,6 +29,7 @@ private:
     };
 
     HttpReply *handleLoginRequest(const HttpRequest &request);
+    HttpReply *handleRefreshRequest(const HttpRequest &request);
     HttpReply *redirectToIndex();
 
     bool verifyStaticFile(const QString &fileName);

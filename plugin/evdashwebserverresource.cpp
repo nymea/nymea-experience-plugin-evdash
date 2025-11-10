@@ -29,6 +29,9 @@ HttpReply *EvDashWebServerResource::processRequest(const HttpRequest &request)
     if (path == basePath() + QStringLiteral("/api/login"))
         return handleLoginRequest(request);
 
+    if (path == basePath() + QStringLiteral("/api/refresh"))
+        return handleRefreshRequest(request);
+
     // Verify methods for static content
     if (request.method() != HttpRequest::Get) {
         HttpReply *reply = HttpReply::createErrorReply(HttpReply::MethodNotAllowed);
@@ -113,6 +116,49 @@ HttpReply *EvDashWebServerResource::handleLoginRequest(const HttpRequest &reques
     return HttpReply::createJsonReply(QJsonDocument(payload));
 }
 
+HttpReply *EvDashWebServerResource::handleRefreshRequest(const HttpRequest &request)
+{
+    if (request.method() != HttpRequest::Post) {
+        HttpReply *reply = HttpReply::createErrorReply(HttpReply::MethodNotAllowed);
+        reply->setHeader(HttpReply::AllowHeader, "POST");
+        return reply;
+    }
+
+    QJsonParseError parseError;
+    const QJsonDocument requestDoc = QJsonDocument::fromJson(request.payload(), &parseError);
+    if (parseError.error != QJsonParseError::NoError || !requestDoc.isObject()) {
+        QJsonObject errorPayload {
+            {QStringLiteral("success"), false},
+            {QStringLiteral("error"), QStringLiteral("invalidRequest")}
+        };
+        return HttpReply::createJsonReply(QJsonDocument(errorPayload), HttpReply::BadRequest);
+    }
+
+    purgeExpiredTokens();
+
+    const QJsonObject requestObject = requestDoc.object();
+    const QString token = requestObject.value(QStringLiteral("token")).toString();
+    if (token.isEmpty() || !m_activeTokens.contains(token)) {
+        QJsonObject response {
+            {QStringLiteral("success"), false},
+            {QStringLiteral("error"), QStringLiteral("unauthorized")}
+        };
+        return HttpReply::createJsonReply(QJsonDocument(response), HttpReply::Unauthorized);
+    }
+
+    TokenInfo info = m_activeTokens.value(token);
+    info.expiresAt = QDateTime::currentDateTimeUtc().addSecs(s_tokenLifetimeSeconds);
+    m_activeTokens.insert(token, info);
+
+    QJsonObject payload {
+        {QStringLiteral("success"), true},
+        {QStringLiteral("token"), token},
+        {QStringLiteral("expiresAt"), info.expiresAt.toString(Qt::ISODateWithMs)}
+    };
+
+    return HttpReply::createJsonReply(QJsonDocument(payload));
+}
+
 bool EvDashWebServerResource::verifyCredentials(const QString &username, const QString &password) const
 {
     Q_UNUSED(username)
@@ -158,4 +204,3 @@ void EvDashWebServerResource::purgeExpiredTokens()
             ++it;
     }
 }
-
