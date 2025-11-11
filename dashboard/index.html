@@ -62,6 +62,27 @@
             gap: 1rem 1.5rem;
         }
 
+        .tool-button {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border: 1px solid rgba(255, 255, 255, 0.65);
+            color: #ffffff;
+            background: transparent;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 1.1rem;
+            transition: background 0.15s ease, border-color 0.15s ease;
+        }
+
+        .tool-button:hover {
+            background: rgba(255, 255, 255, 0.15);
+            border-color: #ffffff;
+        }
+
         main {
             flex: 1;
             width: min(960px, 92vw);
@@ -341,13 +362,13 @@
                     <span id="sessionSummary">Please sign in.</span>
                     <button type="button" id="logoutButton" class="ghost hidden">Logout</button>
                 </div>
+                <a class="tool-button" href="help.html" aria-label="Open help">?</a>
             </div>
         </div>
     </header>
     <main>
         <section class="card">
             <h2>Chargers</h2>
-            <p class="helper-text">Live data from your configured nymea EV chargers.</p>
             <div class="table-wrapper">
                 <table class="chargers-table">
                     <thead>
@@ -372,25 +393,6 @@
                     </tbody>
                 </table>
             </div>
-        </section>
-        <section class="card">
-            <h2>API Contract</h2>
-            <p class="helper-text">All requests follow the structure below. Use <code>app.sendAction(action, payload)</code> from the browser console after authentication.</p>
-            <div class="grid-two-column">
-                <div>
-                    <h3>Request template</h3>
-                    <pre id="requestTemplate"></pre>
-                </div>
-                <div>
-                    <h3>Responses</h3>
-                    <pre id="responseTemplate"></pre>
-                </div>
-            </div>
-        </section>
-
-        <section class="card" aria-live="polite">
-            <h2>Last message</h2>
-            <pre id="incomingMessage">No messages received yet.</pre>
         </section>
     </main>
 

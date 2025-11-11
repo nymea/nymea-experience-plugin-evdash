@@ -35,6 +35,8 @@
 #include <QHash>
 #include <QJsonObject>
 
+#include <integrations/thing.h>
+
 class QWebSocket;
 class QWebSocketServer;
 
@@ -52,6 +54,11 @@ public:
 signals:
     void webSocketListeningChanged(bool listening);
 
+private slots:
+    void onThingAdded(Thing *thing);
+    void onThingRemoved(const ThingId &thingId);
+    void onThingChanged(Thing *thing);
+
 private:
     ThingManager *m_thingManager = nullptr;
     EvDashWebServerResource *m_webServerResource = nullptr;
@@ -60,14 +67,23 @@ private:
     QList<QWebSocket *> m_clients;
     QHash<QWebSocket *, QString> m_authenticatedClients;
 
+    QList<Thing *> m_chargers;
+    void monitorChargerThing(Thing *thing);
+
+    // Websocket server
     bool startWebSocket(quint16 port = 0);
     void processTextMessage(QWebSocket *socket, const QString &message);
+
+    // Websocket API
     QJsonObject handleApiRequest(QWebSocket *socket, const QJsonObject &request);
     void sendReply(QWebSocket *socket, QJsonObject response) const;
+    void sendNotification(const QString &notification, QJsonObject payload) const;
+
     QJsonObject createSuccessResponse(const QString &requestId, const QJsonObject &payload = {}) const;
     QJsonObject createErrorResponse(const QString &requestId, const QString &errorMessage) const;
 
     QJsonObject packCharger(Thing *charger) const;
+
 };
 
 #endif // EVDASHENGINE_H

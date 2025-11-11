@@ -333,6 +333,8 @@ class DashboardApp {
             return;
         }
 
+        console.log('<--', data);
+
         if (this.elements.incomingMessage)
             this.elements.incomingMessage.textContent = JSON.stringify(data, null, 2);
 
@@ -380,7 +382,13 @@ class DashboardApp {
     }
 
     handleUnsolicitedMessage(data) {
-        if (!data || !data.payload)
+        if (!data)
+            return false;
+
+        if (data.event && this.handleNotificationEvent(data.event, data.payload))
+            return true;
+
+        if (!data.payload)
             return false;
 
         const payload = data.payload;
@@ -390,12 +398,30 @@ class DashboardApp {
             return true;
         }
 
-        if (payload.charger && payload.charger.id) {
+        if (payload.charger) {
             this.upsertCharger(payload.charger);
             return true;
         }
 
         return false;
+    }
+
+    handleNotificationEvent(eventName, payload) {
+        if (!eventName)
+            return false;
+
+        const normalizedEvent = typeof eventName === 'string' ? eventName.toLowerCase() : '';
+        switch (normalizedEvent) {
+        case 'chargeradded':
+        case 'chargerchanged':
+            this.upsertCharger(payload);
+            return true;
+        case 'chargerremoved':
+            this.removeCharger(payload);
+            return true;
+        default:
+            return false;
+        }
     }
 
     onAuthenticationSucceeded() {
@@ -481,9 +507,10 @@ class DashboardApp {
 
         const seen = new Set();
         chargers.forEach(charger => {
-            if (!charger || !charger.id)
+            const key = this.getChargerKey(charger);
+            if (!key)
                 return;
-            seen.add(charger.id);
+            seen.add(key);
             this.upsertCharger(charger);
         });
 
@@ -494,21 +521,24 @@ class DashboardApp {
     }
 
     upsertCharger(charger) {
-        if (!charger || !charger.id)
+        const key = this.getChargerKey(charger);
+        if (!key)
             return;
 
-        const hasExisting = this.chargers.has(charger.id);
-        const previous = hasExisting ? this.chargers.get(charger.id) : {};
+        const hasExisting = this.chargers.has(key);
+        const previous = hasExisting ? this.chargers.get(key) : {};
         const merged = { ...previous, ...charger };
-        this.chargers.set(charger.id, merged);
+        merged.thingId = key;
+        this.chargers.set(key, merged);
         this.syncChargerRow(merged, !hasExisting);
     }
 
     syncChargerRow(charger, forceCreate = false) {
-        if (!charger || !charger.id || !this.elements.chargerTableBody)
+        const key = this.getChargerKey(charger);
+        if (!charger || !key || !this.elements.chargerTableBody)
             return;
 
-        let row = this.findChargerRow(charger.id);
+        let row = this.findChargerRow(key);
         if (!row || forceCreate) {
             if (row && row.parentElement)
                 row.parentElement.removeChild(row);
@@ -528,7 +558,7 @@ class DashboardApp {
 
     buildChargerRow(charger) {
         const row = document.createElement('tr');
-        row.dataset.chargerId = charger.id;
+        row.dataset.chargerId = this.getChargerKey(charger) || '';
         this.chargerColumns.forEach(column => {
             const cell = document.createElement('td');
             cell.dataset.column = column.key;
@@ -538,22 +568,13 @@ class DashboardApp {
         return row;
     }
 
-    findChargerRow(chargerId) {
-        if (!this.elements.chargerTableBody || !chargerId)
-            return null;
-
-        const normalizedId = typeof CSS !== 'undefined' && CSS.escape
-            ? CSS.escape(String(chargerId))
-            : String(chargerId).replace(/"/g, '\\"');
-        return this.elements.chargerTableBody.querySelector(`tr[data-charger-id="${normalizedId}"]`);
-    }
-
-    removeCharger(chargerId) {
-        if (!chargerId)
+    removeCharger(identifier) {
+        const key = this.getChargerKey(identifier);
+        if (!key)
             return;
 
-        this.chargers.delete(chargerId);
-        const row = this.findChargerRow(chargerId);
+        this.chargers.delete(key);
+        const row = this.findChargerRow(key);
         if (row && row.parentElement)
             row.parentElement.removeChild(row);
 
@@ -571,6 +592,32 @@ class DashboardApp {
         });
 
         this.toggleChargerEmptyState();
+    }
+
+    findChargerRow(chargerId) {
+        if (!this.elements.chargerTableBody || !chargerId)
+            return null;
+
+        const normalizedId = typeof CSS !== 'undefined' && CSS.escape
+            ? CSS.escape(String(chargerId))
+            : String(chargerId).replace(/"/g, '\\"');
+        return this.elements.chargerTableBody.querySelector(`tr[data-charger-id="${normalizedId}"]`);
+    }
+
+    getChargerKey(source) {
+        if (!source)
+            return null;
+
+        if (typeof source === 'string')
+            return source;
+
+        if (source.thingId)
+            return source.thingId;
+
+        if (source.id)
+            return source.id;
+
+        return null;
     }
 
     toggleChargerEmptyState() {
@@ -680,7 +727,7 @@ class DashboardApp {
 
     setAuthLayout(requireAuth) {
         const body = document.body;
-        if (!body)
+        if (!body || body.dataset.mode === 'help')
             return;
         body.classList.toggle('needs-auth', requireAuth);
     }

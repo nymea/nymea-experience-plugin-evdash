@@ -3,5 +3,6 @@
     <qresource prefix="/">
         <file>dashboard/app.js</file>
         <file>dashboard/index.html</file>
+        <file>dashboard/help.html</file>
     </qresource>
 </RCC>

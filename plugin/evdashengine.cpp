@@ -52,6 +52,19 @@ EvDashEngine::EvDashEngine(ThingManager *thingManager, EvDashWebServerResource *
     m_thingManager{thingManager},
     m_webServerResource{webServerResource}
 {
+    Things evChargers = m_thingManager->configuredThings().filterByInterface("evcharger");
+
+    // Init charger list
+    foreach (Thing *chargerThing, evChargers) {
+        m_chargers.append(chargerThing);
+        monitorChargerThing(chargerThing);
+    }
+
+    connect(m_thingManager, &ThingManager::thingAdded, this, &EvDashEngine::onThingAdded);
+    connect(m_thingManager, &ThingManager::thingRemoved, this, &EvDashEngine::onThingRemoved);
+    connect(m_thingManager, &ThingManager::thingChanged, this, &EvDashEngine::onThingChanged);
+
+    // Setup websocket server
     m_webSocketServer = new QWebSocketServer(QStringLiteral("EvDashEngine"), QWebSocketServer::NonSecureMode, this);
 
     connect(m_webSocketServer, &QWebSocketServer::newConnection, this, [this](){
@@ -98,6 +111,44 @@ EvDashEngine::~EvDashEngine()
 
     m_clients.clear();
     m_authenticatedClients.clear();
+}
+
+void EvDashEngine::onThingAdded(Thing *thing)
+{
+    if (thing->thingClass().interfaces().contains("evcharger")) {
+        m_chargers.append(thing);
+        monitorChargerThing(thing);
+        sendNotification("ChargerAdded", packCharger(thing));
+    }
+}
+
+void EvDashEngine::onThingRemoved(const ThingId &thingId)
+{
+    foreach (Thing *thing, m_chargers) {
+        if (thing->id() == thingId) {
+            qCDebug(dcEvDashExperience()) << "Charger has been removed.";
+            m_chargers.removeAll(thing);
+            sendNotification("ChargerRemoved", packCharger(thing));
+        }
+    }
+}
+
+void EvDashEngine::onThingChanged(Thing *thing)
+{
+    sendNotification("ChargerChanged", packCharger(thing));
+}
+
+void EvDashEngine::monitorChargerThing(Thing *thing)
+{
+    connect(thing, &Thing::stateValueChanged, this, [this, thing](const StateTypeId &stateTypeId, const QVariant &value, const QVariant &minValue, const QVariant &maxValue, const QVariantList &possibleValues){
+        Q_UNUSED(stateTypeId)
+        Q_UNUSED(value)
+        Q_UNUSED(minValue)
+        Q_UNUSED(maxValue)
+        Q_UNUSED(possibleValues)
+
+        onThingChanged(thing);
+    });
 }
 
 bool EvDashEngine::startWebSocket(quint16 port)
@@ -230,6 +281,21 @@ void EvDashEngine::sendReply(QWebSocket *socket, QJsonObject response) const
     const QJsonDocument replyDoc(response);
     qCDebug(dcEvDashExperience()) << "<--" << qUtf8Printable(replyDoc.toJson(QJsonDocument::Compact));
     socket->sendTextMessage(QString::fromUtf8(replyDoc.toJson(QJsonDocument::Compact)));
+}
+
+void EvDashEngine::sendNotification(const QString &notification, QJsonObject payload) const
+{
+    // Send to all active clients
+
+    for (QWebSocket *client : qAsConst(m_clients)) {
+        QJsonObject notificationObject;
+        notificationObject.insert(QStringLiteral("requestId"), QUuid::createUuid().toString(QUuid::WithoutBraces));
+        notificationObject.insert("event", notification);
+        notificationObject.insert("payload", payload);
+        const QJsonDocument notificationDoc(notificationObject);
+        qCDebug(dcEvDashExperience()) << "<--" << qUtf8Printable(notificationDoc.toJson(QJsonDocument::Compact));
+        client->sendTextMessage(QString::fromUtf8(notificationDoc.toJson(QJsonDocument::Compact)));
+    }
 }
 
 QJsonObject EvDashEngine::createSuccessResponse(const QString &requestId, const QJsonObject &payload) const
