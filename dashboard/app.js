@@ -658,6 +658,18 @@ class DashboardApp {
         if (value === null || value === undefined || value === '')
             return '—';
 
+        if ((key === 'currentPower' || key === 'sessionEnergy') && typeof value === 'number') {
+            if (!Number.isFinite(value))
+                return '—';
+            const unit = key === 'currentPower' ? 'kW' : 'kWh';
+            if (key === 'currentPower') {
+                value = value / 1000;
+                return `${value.toFixed(2)} ${unit}`;
+            }
+
+            return `${value.toFixed(2)} ${unit}`;
+        }
+
         if (typeof value === 'boolean')
             return value ? 'Yes' : 'No';
 

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>nymea EV Dash</title>
+    <title>EV Dash</title>
     <style>
         :root {
             --primary-color: #0050a0;
@@ -21,7 +21,7 @@
 
         body {
             margin: 0;
-            font-family: "Segoe UI", Roboto, sans-serif;
+            font-family: "UniversLTStd", "Segoe UI", Roboto, sans-serif;
             background: var(--background-color);
             color: var(--text-color);
             min-height: 100vh;
@@ -422,23 +422,23 @@
     <section id="loginOverlay" class="login-view" aria-labelledby="loginTitle">
         <div class="login-panel">
             <h2 id="loginTitle">Sign in</h2>
-            <p>Authenticate with your nymea credentials to obtain a session token for the dashboard.</p>
+            <p>Please enter your credentials.</p>
             <div id="loginError" class="error-message hidden" role="alert"></div>
             <form id="loginForm" autocomplete="on">
                 <label for="username">Username
-                    <input type="text" id="username" name="username" autocomplete="username" required placeholder="nymea user">
+                    <input type="text" id="username" name="username" autocomplete="username" required placeholder="user">
                 </label>
                 <label for="password">Password
                     <input type="password" id="password" name="password" autocomplete="current-password" required placeholder="••••••••">
                 </label>
-                <p class="helper-text">Tokens remain valid for one hour. Reloading the dashboard reuses an active session automatically.</p>
+                <p class="helper-text">Contact the administrator in order to receive a valid login.</p>
                 <button type="submit" id="loginButton" class="primary">Sign in</button>
             </form>
         </div>
     </section>
 
     <footer>
-        <span id="appVersion">nymea EV Dash</span> · &copy; 2013–2025 chargebyte GmbH. All rights reserved.
+        <span id="appVersion">EV Dash</span> · &copy; 2025 chargebyte GmbH. All rights reserved.
     </footer>
 
     <script src="app.js"></script>

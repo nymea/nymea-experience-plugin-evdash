@@ -328,7 +328,7 @@ QJsonObject EvDashEngine::packCharger(Thing *charger) const
     chargerObject.insert("connected", charger->stateValue("connected").toBool());
     chargerObject.insert("chargingCurrent", charger->stateValue("maxChargingCurrent").toDouble());
     chargerObject.insert("chargingAllowed", charger->stateValue("power").toBool());
-    chargerObject.insert("currentPower", charger->stateValue("currentPower").toBool());
+    chargerObject.insert("currentPower", charger->stateValue("currentPower").toDouble());
     chargerObject.insert("pluggedIn", charger->stateValue("pluggedIn").toBool());
 
     if (charger->hasState("currentVersion"))
