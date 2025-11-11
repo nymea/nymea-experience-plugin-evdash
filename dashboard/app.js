@@ -13,7 +13,9 @@ class DashboardApp {
             logoutButton: document.getElementById('logoutButton'),
             requestTemplate: document.getElementById('requestTemplate'),
             responseTemplate: document.getElementById('responseTemplate'),
-            incomingMessage: document.getElementById('incomingMessage')
+            incomingMessage: document.getElementById('incomingMessage'),
+            chargerTableBody: document.getElementById('chargerTableBody'),
+            chargerEmptyRow: document.getElementById('chargerEmptyRow')
         };
 
         this.sessionKey = 'evdash.session';
@@ -25,10 +27,25 @@ class DashboardApp {
         this.reconnectTimer = null;
         this.tokenRefreshTimer = null;
         this.refreshInFlight = false;
+        this.chargers = new Map();
+        this.chargerColumns = [
+            { key: 'id', label: 'ID' },
+            { key: 'name', label: 'Name' },
+            { key: 'connected', label: 'Connected' },
+            { key: 'chargingCurrent', label: 'Charging current' },
+            { key: 'chargingAllowed', label: 'Charging allowed' },
+            { key: 'currentPower', label: 'Current power' },
+            { key: 'pluggedIn', label: 'Plugged in' },
+            { key: 'version', label: 'Version' },
+            { key: 'sessionEnergy', label: 'Session energy' },
+            { key: 'temperature', label: 'Temperature' },
+            { key: 'chargingPhases', label: 'Charging phases' }
+        ];
 
         this.renderStaticTemplates();
         this.attachEventListeners();
         this.restoreSession();
+        this.toggleChargerEmptyState();
     }
 
     attachEventListeners() {
@@ -240,6 +257,8 @@ class DashboardApp {
         clearTimeout(this.tokenRefreshTimer);
         this.tokenRefreshTimer = null;
         this.refreshInFlight = false;
+        this.chargers.clear();
+        this.resetChargerTable();
 
         try {
             window.localStorage.removeItem(this.sessionKey);
@@ -299,17 +318,9 @@ class DashboardApp {
         if (!this.socket || this.socket.readyState !== WebSocket.OPEN)
             return;
 
-        const requestId = this.generateRequestId();
-        const message = {
-            requestId,
-            action: 'authenticate',
-            payload: {
-                token: this.token
-            }
-        };
-
-        this.pendingRequests.set(requestId, { type: 'authenticate' });
-        this.socket.send(JSON.stringify(message));
+        this.sendAction('authenticate', {
+            token: this.token
+        });
     }
 
     onSocketMessage(event) {
@@ -325,28 +336,72 @@ class DashboardApp {
         if (this.elements.incomingMessage)
             this.elements.incomingMessage.textContent = JSON.stringify(data, null, 2);
 
+        let handled = false;
         if (data.requestId && this.pendingRequests.has(data.requestId)) {
             const pending = this.pendingRequests.get(data.requestId);
             this.pendingRequests.delete(data.requestId);
-
-            if (pending.type === 'authenticate') {
-                if (data.success) {
-                    this.onAuthenticationSucceeded();
-                } else {
-                    this.onAuthenticationFailed(data.error || 'unauthorized');
-                }
-                return;
-            }
+            handled = this.handlePendingResponse(pending, data);
+        } else {
+            handled = this.handleUnsolicitedMessage(data);
         }
 
-        if (data.success === false && data.error === 'unauthenticated') {
+        if (!handled && data.success === false && data.error === 'unauthenticated')
             this.onAuthenticationFailed('unauthenticated');
+    }
+
+    handlePendingResponse(pending, data) {
+        if (!pending)
+            return false;
+
+        const type = typeof pending.type === 'string' ? pending.type.toLowerCase() : '';
+
+        if (type === 'authenticate') {
+            if (data.success)
+                this.onAuthenticationSucceeded();
+            else
+                this.onAuthenticationFailed(data.error || 'unauthorized');
+            return true;
         }
+
+        if (type === 'getchargers') {
+            if (data.success) {
+                const payload = data && data.payload ? data.payload : {};
+                const chargers = Array.isArray(payload.chargers) ? payload.chargers : [];
+                this.processChargerList(chargers);
+            } else if (data.error === 'unauthenticated') {
+                this.onAuthenticationFailed('unauthenticated');
+            } else {
+                console.warn('GetChargers request failed', data.error || 'unknownError');
+            }
+            return true;
+        }
+
+        return false;
+    }
+
+    handleUnsolicitedMessage(data) {
+        if (!data || !data.payload)
+            return false;
+
+        const payload = data.payload;
+
+        if (Array.isArray(payload.chargers)) {
+            this.processChargerList(payload.chargers);
+            return true;
+        }
+
+        if (payload.charger && payload.charger.id) {
+            this.upsertCharger(payload.charger);
+            return true;
+        }
+
+        return false;
     }
 
     onAuthenticationSucceeded() {
         this.updateConnectionStatus('Connected', 'connected');
         this.updateSessionSummary();
+        this.sendGetChargers();
     }
 
     onAuthenticationFailed(reason) {
@@ -395,6 +450,9 @@ class DashboardApp {
             payload
         };
 
+        const normalizedAction = typeof action === 'string' ? action.toLowerCase() : '';
+        this.pendingRequests.set(requestId, { type: normalizedAction });
+
         this.socket.send(JSON.stringify(message));
         return requestId;
     }
@@ -413,6 +471,135 @@ class DashboardApp {
 
     sendGetChargers() {
         return this.sendAction('GetChargers', { });
+    }
+
+    processChargerList(chargers = []) {
+        if (!Array.isArray(chargers)) {
+            console.warn('Expected chargers array in payload.');
+            return;
+        }
+
+        const seen = new Set();
+        chargers.forEach(charger => {
+            if (!charger || !charger.id)
+                return;
+            seen.add(charger.id);
+            this.upsertCharger(charger);
+        });
+
+        for (const existingId of Array.from(this.chargers.keys())) {
+            if (!seen.has(existingId))
+                this.removeCharger(existingId);
+        }
+    }
+
+    upsertCharger(charger) {
+        if (!charger || !charger.id)
+            return;
+
+        const hasExisting = this.chargers.has(charger.id);
+        const previous = hasExisting ? this.chargers.get(charger.id) : {};
+        const merged = { ...previous, ...charger };
+        this.chargers.set(charger.id, merged);
+        this.syncChargerRow(merged, !hasExisting);
+    }
+
+    syncChargerRow(charger, forceCreate = false) {
+        if (!charger || !charger.id || !this.elements.chargerTableBody)
+            return;
+
+        let row = this.findChargerRow(charger.id);
+        if (!row || forceCreate) {
+            if (row && row.parentElement)
+                row.parentElement.removeChild(row);
+            row = this.buildChargerRow(charger);
+            this.elements.chargerTableBody.appendChild(row);
+        } else {
+            this.chargerColumns.forEach(column => {
+                const cell = row.querySelector(`td[data-column="${column.key}"]`);
+                if (!cell)
+                    return;
+                cell.textContent = this.formatChargerValue(column.key, charger[column.key]);
+            });
+        }
+
+        this.toggleChargerEmptyState();
+    }
+
+    buildChargerRow(charger) {
+        const row = document.createElement('tr');
+        row.dataset.chargerId = charger.id;
+        this.chargerColumns.forEach(column => {
+            const cell = document.createElement('td');
+            cell.dataset.column = column.key;
+            cell.textContent = this.formatChargerValue(column.key, charger[column.key]);
+            row.appendChild(cell);
+        });
+        return row;
+    }
+
+    findChargerRow(chargerId) {
+        if (!this.elements.chargerTableBody || !chargerId)
+            return null;
+
+        const normalizedId = typeof CSS !== 'undefined' && CSS.escape
+            ? CSS.escape(String(chargerId))
+            : String(chargerId).replace(/"/g, '\\"');
+        return this.elements.chargerTableBody.querySelector(`tr[data-charger-id="${normalizedId}"]`);
+    }
+
+    removeCharger(chargerId) {
+        if (!chargerId)
+            return;
+
+        this.chargers.delete(chargerId);
+        const row = this.findChargerRow(chargerId);
+        if (row && row.parentElement)
+            row.parentElement.removeChild(row);
+
+        this.toggleChargerEmptyState();
+    }
+
+    resetChargerTable() {
+        if (!this.elements.chargerTableBody)
+            return;
+
+        const rows = this.elements.chargerTableBody.querySelectorAll('tr[data-charger-id]');
+        rows.forEach(row => {
+            if (row.parentElement)
+                row.parentElement.removeChild(row);
+        });
+
+        this.toggleChargerEmptyState();
+    }
+
+    toggleChargerEmptyState() {
+        if (!this.elements.chargerEmptyRow)
+            return;
+
+        const hasChargers = this.chargers && this.chargers.size > 0;
+        this.elements.chargerEmptyRow.classList.toggle('hidden', hasChargers);
+    }
+
+    formatChargerValue(key, value) {
+        if (value === null || value === undefined || value === '')
+            return '—';
+
+        if (typeof value === 'boolean')
+            return value ? 'Yes' : 'No';
+
+        if (typeof value === 'number')
+            return Number.isFinite(value) ? String(value) : '—';
+
+        if (typeof value === 'string')
+            return value;
+
+        try {
+            return JSON.stringify(value);
+        } catch (error) {
+            console.warn(`Failed to stringify value for ${key}`, error);
+            return '—';
+        }
     }
 
     updateConnectionStatus(text, state) {

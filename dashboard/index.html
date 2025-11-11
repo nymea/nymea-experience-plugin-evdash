@@ -125,6 +125,45 @@
             }
         }
 
+        .table-wrapper {
+            overflow-x: auto;
+        }
+
+        table.chargers-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.95rem;
+        }
+
+        .chargers-table th,
+        .chargers-table td {
+            padding: 0.5rem 0.75rem;
+            border-bottom: 1px solid #e4e9f2;
+            text-align: left;
+        }
+
+        .chargers-table th {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--muted-text-color);
+        }
+
+        .chargers-table tbody tr:nth-child(even) {
+            background: #f9fbfd;
+        }
+
+        .chargers-table td[data-column="id"] {
+            font-family: "Fira Code", "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+            font-size: 0.85rem;
+        }
+
+        .chargers-table .empty-row td {
+            text-align: center;
+            font-style: italic;
+            color: var(--muted-text-color);
+        }
+
         pre {
             margin: 0;
             background: #f8fafc;
@@ -306,6 +345,34 @@
         </div>
     </header>
     <main>
+        <section class="card">
+            <h2>Chargers</h2>
+            <p class="helper-text">Live data from your configured nymea EV chargers.</p>
+            <div class="table-wrapper">
+                <table class="chargers-table">
+                    <thead>
+                        <tr>
+                            <th scope="col">ID</th>
+                            <th scope="col">Name</th>
+                            <th scope="col">Connected</th>
+                            <th scope="col">Charging current</th>
+                            <th scope="col">Charging allowed</th>
+                            <th scope="col">Current power</th>
+                            <th scope="col">Plugged in</th>
+                            <th scope="col">Version</th>
+                            <th scope="col">Session energy</th>
+                            <th scope="col">Temperature</th>
+                            <th scope="col">Charging phases</th>
+                        </tr>
+                    </thead>
+                    <tbody id="chargerTableBody">
+                        <tr id="chargerEmptyRow" class="empty-row">
+                            <td colspan="11">No chargers loaded yet.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
         <section class="card">
             <h2>API Contract</h2>
             <p class="helper-text">All requests follow the structure below. Use <code>app.sendAction(action, payload)</code> from the browser console after authentication.</p>
