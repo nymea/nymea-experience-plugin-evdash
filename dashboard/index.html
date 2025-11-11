@@ -6,13 +6,15 @@
     <title>EV Dash</title>
     <style>
         :root {
-            --primary-color: #0050a0;
-            --secondary-color: #00a0e0;
+            --primary-color: #e30a18;
+            --secondary-color: #a20d17;;
             --accent-color: #f4b400;
             --surface-color: #ffffff;
-            --background-color: #f5f7fa;
-            --text-color: #1f2d3d;
-            --muted-text-color: #566b84;
+            --background-color: #58616b;
+            --text-color: #222222;
+            --muted-text-color: #3342538a;;
+            --green-color: #2ecc71;
+            --red-color: #e30a18;
         }
 
         * {
@@ -124,7 +126,7 @@
         }
 
         .status-dot.connected {
-            background-color: #2ecc71;
+            background-color: var(--green-color);
         }
 
         .status-dot.authenticating {
@@ -132,7 +134,7 @@
         }
 
         .status-dot.error {
-            background-color: #e74c3c;
+            background-color: var(--red-color);
         }
 
         .grid-two-column {
@@ -191,11 +193,11 @@
         }
 
         .value-dot-true {
-            background: #2ecc71;
+            background: var(--green-color);
         }
 
         .value-dot-false {
-            background: #e74c3c;
+            background: var(--red-color);
         }
 
         .sr-only {

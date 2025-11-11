@@ -4,5 +4,7 @@
         <file>dashboard/app.js</file>
         <file>dashboard/index.html</file>
         <file>dashboard/help.html</file>
+        <file>dashboard/styles/pce/favicon.ico</file>
+        <file>dashboard/styles/pce/icon.png</file>
     </qresource>
 </RCC>
