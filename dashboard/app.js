@@ -29,7 +29,7 @@ class DashboardApp {
         this.refreshInFlight = false;
         this.chargers = new Map();
         this.chargerColumns = [
-            { key: 'id', label: 'ID' },
+            { key: 'id', label: 'ID', hidden: true },
             { key: 'name', label: 'Name' },
             { key: 'connected', label: 'Connected' },
             { key: 'chargingCurrent', label: 'Charging current' },
@@ -546,10 +546,12 @@ class DashboardApp {
             this.elements.chargerTableBody.appendChild(row);
         } else {
             this.chargerColumns.forEach(column => {
+                if (column.hidden)
+                    return;
                 const cell = row.querySelector(`td[data-column="${column.key}"]`);
                 if (!cell)
                     return;
-                cell.textContent = this.formatChargerValue(column.key, charger[column.key]);
+                this.renderCellValue(cell, column.key, charger[column.key]);
             });
         }
 
@@ -560,12 +562,36 @@ class DashboardApp {
         const row = document.createElement('tr');
         row.dataset.chargerId = this.getChargerKey(charger) || '';
         this.chargerColumns.forEach(column => {
+            if (column.hidden)
+                return;
             const cell = document.createElement('td');
             cell.dataset.column = column.key;
-            cell.textContent = this.formatChargerValue(column.key, charger[column.key]);
+            this.renderCellValue(cell, column.key, charger[column.key]);
             row.appendChild(cell);
         });
         return row;
+    }
+
+    renderCellValue(cell, key, value) {
+        if (!cell)
+            return;
+
+        if (typeof value === 'boolean') {
+            cell.innerHTML = '';
+            const dot = document.createElement('span');
+            dot.className = `value-dot ${value ? 'value-dot-true' : 'value-dot-false'}`;
+            dot.setAttribute('role', 'img');
+            dot.setAttribute('aria-label', value ? 'True' : 'False');
+            dot.title = value ? 'True' : 'False';
+            const srText = document.createElement('span');
+            srText.className = 'sr-only';
+            srText.textContent = value ? 'True' : 'False';
+            cell.appendChild(dot);
+            cell.appendChild(srText);
+            return;
+        }
+
+        cell.textContent = this.formatChargerValue(key, value);
     }
 
     removeCharger(identifier) {
