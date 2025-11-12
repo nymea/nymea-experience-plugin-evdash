@@ -14,11 +14,13 @@ QT += network sql websockets
 HEADERS += experiencepluginevdash.h \
     evdashengine.h \
     evdashjsonhandler.h \
+    evdashsettings.h \
     evdashwebserverresource.h
 
 SOURCES += experiencepluginevdash.cpp \
     evdashengine.cpp \
     evdashjsonhandler.cpp \
+    evdashsettings.cpp \
     evdashwebserverresource.cpp
 
 target.path = $$[QT_INSTALL_LIBS]/nymea/experiences/

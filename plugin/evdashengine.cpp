@@ -29,6 +29,7 @@
 * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "evdashengine.h"
+#include "evdashsettings.h"
 #include "evdashwebserverresource.h"
 
 #include <integrations/thingmanager.h>
@@ -94,23 +95,48 @@ EvDashEngine::EvDashEngine(ThingManager *thingManager, EvDashWebServerResource *
         qCWarning(dcEvDashExperience()) << "WebSocket accept error" << error << m_webSocketServer->errorString();
     });
 
-    startWebSocket(4449);
+    EvDashSettings settings;
+    settings.beginGroup("General");
+    m_webSocketPort = settings.value("webSocketServerPort", 4449).toUInt();
+    bool enabled = settings.value("enabled", false).toBool();
+    settings.endGroup();
+
+    // Start the service if enabled
+    setEnabled(enabled);
 }
 
 EvDashEngine::~EvDashEngine()
 {
-    if (m_webSocketServer->isListening())
-        m_webSocketServer->close();
+    stopWebSocketServer();
+}
 
-    for (QWebSocket *client : qAsConst(m_clients)) {
-        if (client->state() == QAbstractSocket::ConnectedState)
-            client->close(QWebSocketProtocol::CloseCodeGoingAway, QStringLiteral("Server shutting down"));
+bool EvDashEngine::enabled() const
+{
+    return m_enabled;
+}
 
-        client->deleteLater();
+bool EvDashEngine::setEnabled(bool enabled)
+{
+    m_enabled = enabled;
+
+    if (m_enabled) {
+        if (!startWebSocketServer(m_webSocketPort)) {
+            return false;
+        }
+    } else {
+        stopWebSocketServer();
     }
 
-    m_clients.clear();
-    m_authenticatedClients.clear();
+    qCDebug(dcEvDashExperience()) << "The EV Dash service is now" << (enabled ? "enabled" : "disabled");
+    m_webServerResource->setEnabled(m_enabled);
+
+    EvDashSettings settings;
+    settings.beginGroup("General");
+    settings.setValue("enabled", enabled);
+    settings.endGroup();
+
+    emit enabledChanged(m_enabled);
+    return true;
 }
 
 void EvDashEngine::onThingAdded(Thing *thing)
@@ -151,7 +177,7 @@ void EvDashEngine::monitorChargerThing(Thing *thing)
     });
 }
 
-bool EvDashEngine::startWebSocket(quint16 port)
+bool EvDashEngine::startWebSocketServer(quint16 port)
 {
     if (m_webSocketServer->isListening()) {
         if (m_webSocketServer->serverPort() == port && port != 0)
@@ -169,6 +195,22 @@ bool EvDashEngine::startWebSocket(quint16 port)
 
     emit webSocketListeningChanged(listening);
     return listening;
+}
+
+void EvDashEngine::stopWebSocketServer()
+{
+    if (m_webSocketServer->isListening())
+        m_webSocketServer->close();
+
+    for (QWebSocket *client : qAsConst(m_clients)) {
+        if (client->state() == QAbstractSocket::ConnectedState)
+            client->close(QWebSocketProtocol::CloseCodeGoingAway, QStringLiteral("Server shutting down"));
+
+        client->deleteLater();
+    }
+
+    m_clients.clear();
+    m_authenticatedClients.clear();
 }
 
 void EvDashEngine::processTextMessage(QWebSocket *socket, const QString &message)

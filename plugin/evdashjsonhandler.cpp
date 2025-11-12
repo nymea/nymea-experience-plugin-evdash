@@ -38,11 +38,58 @@ EvDashJsonHandler::EvDashJsonHandler(EvDashEngine *engine, QObject *parent):
     JsonHandler{parent},
     m_engine{engine}
 {
+    registerEnum<EvDashEngine::EvDashError>();
+
+    QVariantMap params, returns;
+    QString description;
+
+    params.clear(); returns.clear();
+    description = "Get the enabled status of EV Dash service.";
+    returns.insert("enabled", enumValueName(Bool));
+    registerMethod("GetEnabled", description, params, returns);
+
+    params.clear(); returns.clear();
+    description = "Enable/Disable the EV Dash service.";
+    params.insert("enabled", enumValueName(Bool));
+    returns.insert("evDashError", enumRef<EvDashEngine::EvDashError>());
+    registerMethod("SetEnabled", description, params, returns);
+
+    // Notifications
+    params.clear();
+    description = "Emitted whenever the EV Dash service has been enabled or disabled.";
+    params.insert("enabled", enumValueName(Bool));
+    registerNotification("EnabledChanged", description, params);
+
+    connect(m_engine, &EvDashEngine::enabledChanged, this, [=](bool enabled){
+        emit EnabledChanged({{"enabled", enabled}});
+    });
 
 }
 
 QString EvDashJsonHandler::name() const
 {
     return "EvDash";
+}
+
+JsonReply *EvDashJsonHandler::GetEnabled(const QVariantMap &params)
+{
+    Q_UNUSED(params)
+
+    QVariantMap returns;
+    returns.insert("enabled", m_engine->enabled());
+    return createReply(returns);
+}
+
+JsonReply *EvDashJsonHandler::SetEnabled(const QVariantMap &params)
+{
+    bool enabled = params.value("enabled").toBool();
+
+    EvDashEngine::EvDashError error = EvDashEngine::EvDashErrorNoError;
+    if (!m_engine->setEnabled(enabled))
+        error = EvDashEngine::EvDashErrorBackendError;
+
+    QVariantMap returns;
+    returns.insert("evDashError", enumValueName(error));
+    return createReply(returns);
 }
 

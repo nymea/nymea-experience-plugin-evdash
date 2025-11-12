@@ -28,32 +28,12 @@
 *
 * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef ENERGYJSONHANDLER_H
-#define ENERGYJSONHANDLER_H
+#include "evdashsettings.h"
 
-#include <QObject>
+#include <nymeasettings.h>
 
-#include <jsonrpc/jsonhandler.h>
-
-class EvDashEngine;
-
-class EvDashJsonHandler : public JsonHandler
+EvDashSettings::EvDashSettings()
+    : QSettings(NymeaSettings::settingsPath() + "/evdash.conf", QSettings::IniFormat)
 {
-    Q_OBJECT
-public:
-    explicit EvDashJsonHandler(EvDashEngine *engine, QObject *parent = nullptr);
 
-    QString name() const override;
-
-    Q_INVOKABLE JsonReply *GetEnabled(const QVariantMap &params);
-    Q_INVOKABLE JsonReply *SetEnabled(const QVariantMap &params);
-
-signals:
-    void EnabledChanged(const QVariantMap &params);
-
-private:
-    EvDashEngine *m_engine = nullptr;
-
-};
-
-#endif // ENERGYJSONHANDLER_H
+}

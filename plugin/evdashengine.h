@@ -48,10 +48,22 @@ class EvDashEngine : public QObject
 {
     Q_OBJECT
 public:
+    enum EvDashError {
+        EvDashErrorNoError = 0,
+        EvDashErrorBackendError,
+        EvDashErrorDuplicateUser,
+        EvDashErrorBadPassword
+    };
+    Q_ENUM(EvDashError)
+
     explicit EvDashEngine(ThingManager *thingManager, EvDashWebServerResource *webServerResource, QObject *parent = nullptr);
     ~EvDashEngine() override;
 
+    bool enabled() const;
+    bool setEnabled(bool enabled);
+
 signals:
+    void enabledChanged(bool enabled);
     void webSocketListeningChanged(bool listening);
 
 private slots:
@@ -62,7 +74,11 @@ private slots:
 private:
     ThingManager *m_thingManager = nullptr;
     EvDashWebServerResource *m_webServerResource = nullptr;
+
+    bool m_enabled = false;
+
     QWebSocketServer *m_webSocketServer = nullptr;
+    quint16 m_webSocketPort = 4449;
 
     QList<QWebSocket *> m_clients;
     QHash<QWebSocket *, QString> m_authenticatedClients;
@@ -71,7 +87,8 @@ private:
     void monitorChargerThing(Thing *thing);
 
     // Websocket server
-    bool startWebSocket(quint16 port = 0);
+    bool startWebSocketServer(quint16 port = 0);
+    void stopWebSocketServer();
     void processTextMessage(QWebSocket *socket, const QString &message);
 
     // Websocket API
