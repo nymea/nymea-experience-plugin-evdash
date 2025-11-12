@@ -2,20 +2,17 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta http-equiv="refresh" content="0; url=index.html#help">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>EV Dash · Help</title>
     <link rel="icon" type="image/x-icon" href="styles/pce/favicon.ico">
     <style>
         :root {
-            --primary-color: #e30a18;
-            --secondary-color: #a20d17;;
-            --accent-color: #f4b400;
-            --surface-color: #ffffff;
             --background-color: #58616b;
+            --surface-color: #ffffff;
+            --primary-color: #e30a18;
             --text-color: #222222;
-            --muted-text-color: #3342538a;;
-            --green-color: #2ecc71;
-            --red-color: #e30a18;
+            --muted-text-color: #515d69;
         }
 
         * {
@@ -24,269 +21,69 @@
 
         body {
             margin: 0;
+            min-height: 100vh;
             font-family: "Segoe UI", Roboto, sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             background: var(--background-color);
             color: var(--text-color);
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
         }
 
-        header {
-            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
-            color: #ffffff;
-            padding: 2rem 1.5rem;
-            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+        .redirect-panel {
+            width: min(420px, 90vw);
+            background: var(--surface-color);
+            padding: 2rem;
+            border-radius: 18px;
+            text-align: center;
+            box-shadow: 0 22px 45px rgba(0, 0, 0, 0.18);
         }
 
-        .header-bar {
-            display: flex;
-            flex-wrap: wrap;
-            align-items: center;
-            justify-content: space-between;
-            gap: 1.5rem;
+        .redirect-panel img {
+            width: 64px;
+            height: 64px;
+            margin-bottom: 1rem;
         }
 
-        .brand {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-            flex: 1 1 260px;
+        .redirect-panel h1 {
+            margin: 0 0 0.5rem;
+            font-size: 1.35rem;
         }
 
-        .brand-logo {
-            display: block;
-            height: 56px;
-            width: auto;
-            flex-shrink: 0;
-            object-fit: contain;
+        .redirect-panel p {
+            margin: 0 0 1.5rem;
+            color: var(--muted-text-color);
         }
 
-        .brand-text {
-            display: flex;
-            flex-direction: column;
-        }
-
-        .brand h1 {
-            margin: 0 0 0.4rem;
-            font-weight: 600;
-            letter-spacing: 0.02em;
-        }
-
-        .brand p {
-            margin: 0;
-            opacity: 0.9;
-        }
-
-        .session-panel {
-            display: flex;
-            flex-wrap: wrap;
-            align-items: center;
-            gap: 1rem 1.5rem;
-        }
-
-        .session-user {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-            font-size: 0.95rem;
-            font-weight: 600;
-            color: #ffffff;
-        }
-
-        .session-user-icon {
-            width: 28px;
-            height: 28px;
-            display: inline-block;
-        }
-
-        .status-indicator {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.75rem;
-            font-weight: 600;
-            margin: 0;
-        }
-
-        .status-dot {
-            width: 14px;
-            height: 14px;
-            border-radius: 50%;
-            background-color: #d3dce6;
-            transition: background-color 0.3s ease;
-        }
-
-        .status-dot.connecting {
-            background-color: #f4b400;
-        }
-
-        .status-dot.connected {
-            background-color: var(--green-color);
-        }
-
-        .status-dot.authenticating {
-            background-color: #8e44ad;
-        }
-
-        .status-dot.error {
-            background-color: var(--red-color);
-        }
-
-        .tool-button {
+        .redirect-panel a {
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            width: 36px;
-            height: 36px;
-            border-radius: 50%;
-            border: 1px solid rgba(255, 255, 255, 0.65);
-            color: #ffffff;
-            background: transparent;
+            padding: 0.75rem 1.5rem;
+            border-radius: 999px;
             text-decoration: none;
             font-weight: 600;
-            font-size: 1.1rem;
-            transition: background 0.15s ease, border-color 0.15s ease;
-        }
-
-        .tool-button:hover {
-            background: rgba(255, 255, 255, 0.15);
-            border-color: #ffffff;
-        }
-
-        button.ghost {
-            border: 1px solid rgba(255, 255, 255, 0.55);
             color: #ffffff;
-            background: transparent;
-            padding: 0.35rem 0.85rem;
-            border-radius: 999px;
-            font-size: 0.9rem;
-        }
-
-        button.ghost:hover {
-            border-color: #ffffff;
-            background: rgba(255, 255, 255, 0.12);
-        }
-
-        main {
-            flex: 1;
-            width: min(960px, 92vw);
-            margin: 2rem auto 3rem;
-            display: grid;
-            gap: 1.5rem;
-        }
-
-        .card {
-            background: var(--surface-color);
-            border-radius: 14px;
-            padding: 1.5rem;
-            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.06);
-        }
-
-        .card h2 {
-            margin-top: 0;
-            font-size: 1.25rem;
-        }
-
-        .grid-two-column {
-            display: grid;
-            gap: 1.5rem;
-        }
-
-        @media (min-width: 900px) {
-            .grid-two-column {
-                grid-template-columns: 1fr 1fr;
-            }
-        }
-
-        pre {
-            margin: 0;
-            background: #f8fafc;
-            border-radius: 10px;
-            padding: 1rem;
-            overflow-x: auto;
-            font-size: 0.95rem;
-        }
-
-        code {
-            font-family: "Fira Code", "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
-        }
-
-        .helper-text {
-            font-size: 0.9rem;
-            color: var(--muted-text-color);
-        }
-
-        footer {
-            text-align: center;
-            padding: 1.25rem 1rem;
-            background: #ffffff;
-            border-top: 1px solid #d3dce6;
-            font-size: 0.9rem;
-            color: var(--muted-text-color);
+            background: linear-gradient(135deg, var(--primary-color), #a20d17);
+            box-shadow: 0 16px 32px rgba(227, 10, 24, 0.25);
         }
     </style>
 </head>
-<body data-mode="help">
-    <header>
-        <div class="header-bar">
-            <div class="brand">
-                <img src="styles/pce/icon.svg" alt="EV Dash logo" class="brand-logo">
-                <div class="brand-text">
-                    <h1>EV Dash</h1>
-                    <p>Reference & diagnostics</p>
-                </div>
-            </div>
-            <div class="session-panel">
-                <p class="status-indicator">
-                    <span id="statusDot" class="status-dot connecting" aria-hidden="true"></span>
-                    <span id="connectionStatus">Awaiting login…</span>
-                </p>
-                <div class="session-user">
-                    <img src="icons/user.svg" alt="" aria-hidden="true" class="session-user-icon">
-                    <span id="sessionUsername">Load the dashboard to authenticate.</span>
-                </div>
-                <button type="button" id="logoutButton" class="ghost hidden">Logout</button>
-                <a class="tool-button" href="index.html" aria-label="Back to dashboard">⟵</a>
-            </div>
-        </div>
-    </header>
-
-    <main>
-        <section class="card">
-            <h2>API Contract</h2>
-            <p class="helper-text">All requests follow the structure below. Use <code>app.sendAction(action, payload)</code> from the browser console after authenticating on the dashboard.</p>
-            <div class="grid-two-column">
-                <div>
-                    <h3>Request template</h3>
-                    <pre id="requestTemplate"></pre>
-                </div>
-                <div>
-                    <h3>Responses</h3>
-                    <pre id="responseTemplate"></pre>
-                </div>
-            </div>
-        </section>
-
-        <section class="card" aria-live="polite">
-            <h2>Last WebSocket message</h2>
-            <p class="helper-text">Inspect the raw payload received from the nymea backend. Sign in on the dashboard first so this page can reuse the stored session.</p>
-            <pre id="incomingMessage">No messages received yet.</pre>
-        </section>
-
-        <section class="card">
-            <h2>Charger table basics</h2>
-            <ul>
-                <li>The main dashboard creates a row for each charger ID and keeps it in sync with backend notifications.</li>
-                <li>Columns follow the order defined by <code>EvDashEngine::packCharger</code>, so new properties appear automatically.</li>
-                <li>Branding (colours, fonts) is driven by CSS variables near the top of each HTML file for easy theming.</li>
-            </ul>
-        </section>
+<body>
+    <main class="redirect-panel">
+        <img src="styles/pce/icon.svg" alt="EV Dash logo">
+        <h1>Help moved into the dashboard</h1>
+        <p>The help content now lives inside the built-in side panel. You will be redirected automatically.</p>
+        <a href="index.html#help">Open EV Dash</a>
     </main>
-
-    <footer>
-        <span id="appVersion">EV Dash</span> · &copy; 2025 chargebyte GmbH. All rights reserved.
-    </footer>
-
-    <script src="app.js"></script>
+    <script>
+        window.addEventListener('load', () => {
+            try {
+                window.location.replace('index.html#help');
+            } catch (error) {
+                window.location.href = 'index.html#help';
+            }
+        });
+    </script>
 </body>
 </html>

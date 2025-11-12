@@ -8,12 +8,12 @@
     <style>
         :root {
             --primary-color: #e30a18;
-            --secondary-color: #a20d17;;
+            --secondary-color: #a20d17;
             --accent-color: #f4b400;
             --surface-color: #ffffff;
             --background-color: #58616b;
             --text-color: #222222;
-            --muted-text-color: #3342538a;;
+            --muted-text-color: #3342538a;
             --green-color: #2ecc71;
             --red-color: #e30a18;
         }
@@ -100,47 +100,6 @@
             display: inline-block;
         }
 
-        .tool-button {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            width: 36px;
-            height: 36px;
-            border-radius: 50%;
-            border: 1px solid rgba(255, 255, 255, 0.65);
-            color: #ffffff;
-            background: transparent;
-            text-decoration: none;
-            font-weight: 600;
-            font-size: 1.1rem;
-            transition: background 0.15s ease, border-color 0.15s ease;
-        }
-
-        .tool-button:hover {
-            background: rgba(255, 255, 255, 0.15);
-            border-color: #ffffff;
-        }
-
-        main {
-            flex: 1;
-            width: min(960px, 92vw);
-            margin: 2rem auto 3rem;
-            display: grid;
-            gap: 1.5rem;
-        }
-
-        .card {
-            background: var(--surface-color);
-            border-radius: 14px;
-            padding: 1.5rem;
-            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.06);
-        }
-
-        .card h2 {
-            margin-top: 0;
-            font-size: 1.25rem;
-        }
-
         .status-indicator {
             display: inline-flex;
             align-items: center;
@@ -173,6 +132,109 @@
             background-color: var(--red-color);
         }
 
+        main {
+            flex: 1;
+            width: 100%;
+            padding: 2rem 1rem 3rem;
+        }
+
+        .app-shell {
+            width: min(1200px, 100%);
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: minmax(220px, 260px) 1fr;
+            gap: 1.5rem;
+            align-items: start;
+        }
+
+        .side-panel {
+            background: var(--surface-color);
+            border-radius: 18px;
+            padding: 1.5rem;
+            box-shadow: 0 18px 35px rgba(0, 0, 0, 0.08);
+            border: 1px solid rgba(0, 0, 0, 0.04);
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .side-panel-header h2 {
+            margin: 0;
+            font-size: 1.15rem;
+        }
+
+        .side-panel-header p {
+            margin: 0.35rem 0 0;
+            color: var(--muted-text-color);
+            font-size: 0.95rem;
+        }
+
+        .side-nav {
+            display: flex;
+            flex-direction: column;
+            gap: 0.85rem;
+        }
+
+        .side-nav-button {
+            display: flex;
+            flex-direction: column;
+            gap: 0.2rem;
+            width: 100%;
+            border-radius: 14px;
+            padding: 0.85rem 1rem;
+            border: 1px solid transparent;
+            background: #f3f6fb;
+            text-align: left;
+            font-weight: 600;
+            font-size: 1rem;
+            color: var(--text-color);
+            cursor: pointer;
+            transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.2s ease;
+        }
+
+        .side-nav-button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 10px 18px rgba(0, 0, 0, 0.08);
+        }
+
+        .side-nav-button.active {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: #ffffff;
+            box-shadow: 0 18px 28px rgba(227, 10, 24, 0.25);
+        }
+
+        .side-nav-button.active .side-nav-subtitle {
+            color: rgba(255, 255, 255, 0.85);
+        }
+
+        .side-nav-subtitle {
+            font-size: 0.85rem;
+            font-weight: 400;
+            opacity: 0.85;
+        }
+
+        .side-panel-footer {
+            margin-top: auto;
+            font-size: 0.85rem;
+            color: var(--muted-text-color);
+        }
+
+        .content-area {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .content-panel {
+            display: none;
+        }
+
+        .content-panel.active {
+            display: grid;
+            gap: 1.5rem;
+            align-content: start;
+        }
+
         .grid-two-column {
             display: grid;
             gap: 1.5rem;
@@ -182,6 +244,47 @@
             .grid-two-column {
                 grid-template-columns: 1fr 1fr;
             }
+        }
+
+        .card {
+            background: var(--surface-color);
+            border-radius: 16px;
+            padding: 1.5rem;
+            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.06);
+            border: 1px solid rgba(0, 0, 0, 0.03);
+        }
+
+        .card-header {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .eyebrow {
+            margin: 0;
+            font-size: 0.8rem;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: var(--muted-text-color);
+        }
+
+        .card h2 {
+            margin: 0;
+            font-size: 1.35rem;
+        }
+
+        .card h3 {
+            margin: 0 0 0.4rem;
+            font-size: 1.05rem;
+        }
+
+        .helper-text {
+            font-size: 0.9rem;
+            color: var(--muted-text-color);
+            margin: 0;
         }
 
         .table-wrapper {
@@ -260,6 +363,15 @@
             font-family: "Fira Code", "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
         }
 
+        ul {
+            margin: 0.4rem 0 0;
+            padding-left: 1.25rem;
+        }
+
+        ul li + li {
+            margin-top: 0.35rem;
+        }
+
         footer {
             text-align: center;
             padding: 1.25rem 1rem;
@@ -269,7 +381,6 @@
             color: var(--muted-text-color);
         }
 
-        /* Authentication view */
         body.needs-auth {
             background: var(--surface-color);
         }
@@ -338,7 +449,7 @@
         input[type="password"]:focus {
             outline: none;
             border-color: var(--secondary-color);
-            box-shadow: 0 0 0 3px rgba(0, 160, 224, 0.2);
+            box-shadow: 0 0 0 3px rgba(162, 13, 23, 0.2);
         }
 
         button {
@@ -377,11 +488,6 @@
             padding: 0.75rem 1rem;
         }
 
-        .helper-text {
-            font-size: 0.9rem;
-            color: var(--muted-text-color);
-        }
-
         .hidden {
             display: none !important;
         }
@@ -399,6 +505,22 @@
             border-color: #ffffff;
             background: rgba(255, 255, 255, 0.12);
         }
+
+        @media (max-width: 960px) {
+            .app-shell {
+                grid-template-columns: 1fr;
+            }
+
+            .side-panel {
+                flex-direction: column;
+            }
+        }
+
+        @media (max-width: 640px) {
+            .side-nav {
+                flex-direction: column;
+            }
+        }
     </style>
 </head>
 <body class="needs-auth">
@@ -408,7 +530,7 @@
                 <img src="styles/pce/icon.svg" alt="EV Dash logo" class="brand-logo">
                 <div class="brand-text">
                     <h1>EV Dash</h1>
-                    <p>Monitor EV chargers in real time.</p>
+                    <p>Monitor & troubleshoot EV chargers.</p>
                 </div>
             </div>
             <div class="session-panel">
@@ -421,37 +543,116 @@
                     <span id="sessionUsername">Awaiting login…</span>
                 </div>
                 <button type="button" id="logoutButton" class="ghost hidden">Logout</button>
-                <a class="tool-button" href="help.html" aria-label="Open help">?</a>
             </div>
         </div>
     </header>
+
     <main>
-        <section class="card">
-            <h2>Chargers</h2>
-            <div class="table-wrapper">
-                <table class="chargers-table">
-                    <thead>
-                        <tr>
-                            <th scope="col">Name</th>
-                            <th scope="col">Connected</th>
-                            <th scope="col">Charging current</th>
-                            <th scope="col">Charging allowed</th>
-                            <th scope="col">Current power</th>
-                            <th scope="col">Plugged in</th>
-                            <th scope="col">Version</th>
-                            <th scope="col">Session energy</th>
-                            <th scope="col">Temperature</th>
-                            <th scope="col">Charging phases</th>
-                        </tr>
-                    </thead>
-                    <tbody id="chargerTableBody">
-                        <tr id="chargerEmptyRow" class="empty-row">
-                            <td colspan="10">No chargers loaded yet.</td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-        </section>
+        <div class="app-shell">
+            <aside class="side-panel" aria-label="Dashboard sections">
+                <div class="side-panel-header">
+                    <p class="eyebrow">Workspace</p>
+                    <h2>Overview</h2>
+                    <p>Switch between live status and built-in documentation.</p>
+                </div>
+                <nav class="side-nav" aria-label="Sections">
+                    <button type="button" class="side-nav-button active" data-panel-target="chargers" aria-pressed="true">
+                        <span>Chargers</span>
+                        <span class="side-nav-subtitle">Live table & telemetry</span>
+                    </button>
+                    <button type="button" class="side-nav-button" data-panel-target="help" aria-pressed="false">
+                        <span>Help</span>
+                        <span class="side-nav-subtitle">API contract & logs</span>
+                    </button>
+                </nav>
+                <div class="side-panel-footer">
+                    Built for nymea experience plugins.
+                </div>
+            </aside>
+
+            <section class="content-area">
+                <section class="content-panel active" data-panel="chargers" aria-labelledby="chargersTitle" aria-hidden="false">
+                    <article class="card">
+                        <div class="card-header">
+                            <div>
+                                <p class="eyebrow">Live overview</p>
+                                <h2 id="chargersTitle">Chargers</h2>
+                            </div>
+                        </div>
+                        <div class="table-wrapper">
+                            <table class="chargers-table">
+                                <thead>
+                                    <tr>
+                                        <th scope="col">Name</th>
+                                        <th scope="col">Connected</th>
+                                        <th scope="col">Charging current</th>
+                                        <th scope="col">Charging allowed</th>
+                                        <th scope="col">Current power</th>
+                                        <th scope="col">Plugged in</th>
+                                        <th scope="col">Version</th>
+                                        <th scope="col">Session energy</th>
+                                        <th scope="col">Temperature</th>
+                                        <th scope="col">Charging phases</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="chargerTableBody">
+                                    <tr id="chargerEmptyRow" class="empty-row">
+                                        <td colspan="10">No chargers loaded yet.</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </article>
+                </section>
+
+                <section class="content-panel" data-panel="help" aria-labelledby="helpTitle" aria-hidden="true">
+                    <article class="card">
+                        <div class="card-header">
+                            <div>
+                                <p class="eyebrow">Guides</p>
+                                <h2 id="helpTitle">API Contract</h2>
+                            </div>
+                            <p class="helper-text">Use <code>app.sendAction(action, payload)</code> after authenticating.</p>
+                        </div>
+                        <div class="grid-two-column">
+                            <div>
+                                <h3>Request template</h3>
+                                <pre id="requestTemplate"></pre>
+                            </div>
+                            <div>
+                                <h3>Responses</h3>
+                                <pre id="responseTemplate"></pre>
+                            </div>
+                        </div>
+                    </article>
+
+                    <article class="card" aria-live="polite">
+                        <div class="card-header">
+                            <div>
+                                <p class="eyebrow">Diagnostics</p>
+                                <h2>Last WebSocket message</h2>
+                            </div>
+                            <p class="helper-text">Sign in to reuse the stored session and inspect backend payloads.</p>
+                        </div>
+                        <pre id="incomingMessage">No messages received yet.</pre>
+                    </article>
+
+                    <article class="card">
+                        <div class="card-header">
+                            <div>
+                                <p class="eyebrow">Reference</p>
+                                <h2>Charger table basics</h2>
+                            </div>
+                        </div>
+                        <ul>
+                            <li>The dashboard keeps one row per charger ID and updates it with backend notifications.</li>
+                            <li>Columns follow the order defined by <code>EvDashEngine::packCharger</code> so new properties show up automatically.</li>
+                            <li>Branding (colours, fonts) is managed via CSS variables at the top of this file for easy overrides.</li>
+                        </ul>
+                    </article>
+                </section>
+            </section>
+        </div>
     </main>
 
     <section id="loginOverlay" class="login-view" aria-labelledby="loginTitle">
@@ -466,7 +667,7 @@
                 <label for="password">Password
                     <input type="password" id="password" name="password" autocomplete="current-password" required placeholder="••••••••">
                 </label>
-                <p class="helper-text">Contact the administrator in order to receive a valid login.</p>
+                <p class="helper-text">Contact the administrator to receive valid credentials.</p>
                 <button type="submit" id="loginButton" class="primary">Sign in</button>
             </form>
         </div>

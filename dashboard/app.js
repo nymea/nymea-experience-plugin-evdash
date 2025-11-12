@@ -15,7 +15,9 @@ class DashboardApp {
             responseTemplate: document.getElementById('responseTemplate'),
             incomingMessage: document.getElementById('incomingMessage'),
             chargerTableBody: document.getElementById('chargerTableBody'),
-            chargerEmptyRow: document.getElementById('chargerEmptyRow')
+            chargerEmptyRow: document.getElementById('chargerEmptyRow'),
+            panelButtons: Array.from(document.querySelectorAll('[data-panel-target]')),
+            contentPanels: Array.from(document.querySelectorAll('[data-panel]'))
         };
 
         this.sessionKey = 'evdash.session';
@@ -28,6 +30,7 @@ class DashboardApp {
         this.tokenRefreshTimer = null;
         this.refreshInFlight = false;
         this.chargers = new Map();
+        this.activePanel = null;
         this.chargerColumns = [
             { key: 'id', label: 'ID', hidden: true },
             { key: 'name', label: 'Name' },
@@ -44,6 +47,7 @@ class DashboardApp {
 
         this.renderStaticTemplates();
         this.attachEventListeners();
+        this.initializePanelNavigation();
         this.restoreSession();
         this.toggleChargerEmptyState();
     }
@@ -61,6 +65,83 @@ class DashboardApp {
                 this.logout();
             });
         }
+    }
+
+    initializePanelNavigation() {
+        const buttons = Array.isArray(this.elements.panelButtons) ? this.elements.panelButtons : [];
+        const panels = Array.isArray(this.elements.contentPanels) ? this.elements.contentPanels : [];
+        if (!buttons.length || !panels.length)
+            return;
+
+        const activatePanel = target => {
+            if (!target)
+                return;
+
+            const hasTarget = panels.some(panel => panel.dataset.panel === target);
+            if (!hasTarget)
+                return;
+
+            this.activePanel = target;
+            panels.forEach(panel => {
+                const isActive = panel.dataset.panel === target;
+                panel.classList.toggle('active', isActive);
+                panel.setAttribute('aria-hidden', isActive ? 'false' : 'true');
+            });
+
+            buttons.forEach(button => {
+                const isActive = button.dataset.panelTarget === target;
+                button.classList.toggle('active', isActive);
+                button.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+            });
+
+            const desiredHash = `#${target}`;
+            if (window.location.hash !== desiredHash) {
+                try {
+                    window.history.replaceState(null, '', desiredHash);
+                } catch (error) {
+                    window.location.hash = target;
+                }
+            }
+        };
+
+        buttons.forEach(button => {
+            button.addEventListener('click', () => {
+                activatePanel(button.dataset.panelTarget);
+            });
+        });
+
+        const hashPanel = this.normalizePanelTargetFromHash(window.location.hash);
+        const preselected = buttons.find(button => button.classList.contains('active'));
+        const fallback = buttons[0];
+        const initialTarget = hashPanel
+            || (preselected ? preselected.dataset.panelTarget : null)
+            || (fallback ? fallback.dataset.panelTarget : null);
+
+        if (initialTarget)
+            activatePanel(initialTarget);
+
+        window.addEventListener('hashchange', () => {
+            const target = this.normalizePanelTargetFromHash(window.location.hash);
+            if (target && target !== this.activePanel)
+                activatePanel(target);
+        });
+    }
+
+    normalizePanelTargetFromHash(hash) {
+        if (!hash || hash.length < 2)
+            return null;
+
+        const lookup = hash.replace('#', '').trim().toLowerCase();
+        if (!lookup)
+            return null;
+
+        const panels = Array.isArray(this.elements.contentPanels) ? this.elements.contentPanels : [];
+        const match = panels.find(panel => {
+            const id = panel.dataset.panel || '';
+            return id.toLowerCase() === lookup;
+        });
+
+        return match ? match.dataset.panel : null;
     }
 
     renderStaticTemplates() {
@@ -767,7 +848,7 @@ class DashboardApp {
 
     setAuthLayout(requireAuth) {
         const body = document.body;
-        if (!body || body.dataset.mode === 'help')
+        if (!body)
             return;
         body.classList.toggle('needs-auth', requireAuth);
     }
