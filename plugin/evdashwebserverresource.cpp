@@ -15,11 +15,6 @@ EvDashWebServerResource::EvDashWebServerResource(QObject *parent)
 
 }
 
-bool EvDashWebServerResource::authenticationRequired() const
-{
-    return true;
-}
-
 HttpReply *EvDashWebServerResource::processRequest(const HttpRequest &request)
 {
     qCDebug(dcEvDashExperience()) << "Process request" << request.url().toString();

@@ -16,8 +16,6 @@ class EvDashWebServerResource : public WebServerResource
 public:
     explicit EvDashWebServerResource(QObject *parent = nullptr);
 
-    bool authenticationRequired() const override;
-
     HttpReply *processRequest(const HttpRequest &request) override;
 
     bool validateToken(const QString &token);
