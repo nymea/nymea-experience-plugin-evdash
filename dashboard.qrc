@@ -7,5 +7,6 @@
         <file>dashboard/styles/pce/favicon.ico</file>
         <file>dashboard/styles/pce/icon.png</file>
         <file>dashboard/styles/pce/icon.svg</file>
+        <file>dashboard/icons/user.svg</file>
     </qresource>
 </RCC>

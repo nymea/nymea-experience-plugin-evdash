@@ -9,7 +9,7 @@ class DashboardApp {
             password: document.getElementById('password'),
             statusDot: document.getElementById('statusDot'),
             connectionStatus: document.getElementById('connectionStatus'),
-            sessionSummary: document.getElementById('sessionSummary'),
+            sessionUsername: document.getElementById('sessionUsername'),
             logoutButton: document.getElementById('logoutButton'),
             requestTemplate: document.getElementById('requestTemplate'),
             responseTemplate: document.getElementById('responseTemplate'),
@@ -140,9 +140,9 @@ class DashboardApp {
             this.tokenExpiry = expiresAt;
             this.username = parsed.username || null;
             this.scheduleTokenRefresh();
-            this.updateSessionSummary();
-            this.hideLoginOverlay();
-            this.connectWebSocket();
+        this.updateSessionUser();
+        this.hideLoginOverlay();
+        this.connectWebSocket();
         } catch (error) {
             console.warn('Failed to restore session', error);
             this.clearSession();
@@ -167,7 +167,7 @@ class DashboardApp {
             .then(session => {
                 this.persistSession({ ...session, username });
                 this.hideLoginOverlay();
-                this.updateSessionSummary();
+                this.updateSessionUser();
                 this.connectWebSocket(true);
             })
             .catch(error => {
@@ -266,7 +266,7 @@ class DashboardApp {
             console.warn('Failed to clear session', error);
         }
 
-        this.updateSessionSummary();
+        this.updateSessionUser();
     }
 
     connectWebSocket(resetPending = false) {
@@ -426,7 +426,7 @@ class DashboardApp {
 
     onAuthenticationSucceeded() {
         this.updateConnectionStatus('Connected', 'connected');
-        this.updateSessionSummary();
+        this.updateSessionUser();
         this.sendGetChargers();
     }
 
@@ -699,19 +699,21 @@ class DashboardApp {
         dot.classList.add(state);
     }
 
-    updateSessionSummary() {
-        if (!this.elements.sessionSummary)
+    updateSessionUser() {
+        if (!this.elements.sessionUsername)
             return;
 
-        if (!this.token) {
-            this.elements.sessionSummary.textContent = 'Please sign in to start the WebSocket session.';
+        const defaultLabel = document.body && document.body.dataset.mode === 'help'
+            ? 'Load the dashboard to authenticate.'
+            : 'Awaiting login…';
+
+        if (!this.token || !this.username) {
+            this.elements.sessionUsername.textContent = defaultLabel;
             this.toggleLogoutButton(false);
             return;
         }
 
-        const expires = this.tokenExpiry ? this.tokenExpiry.toISOString() : 'unknown';
-        const username = this.username ? this.username : 'user';
-        this.elements.sessionSummary.textContent = `Signed in as ${username}. Token valid until ${expires}.`;
+        this.elements.sessionUsername.textContent = this.username;
         this.toggleLogoutButton(true);
     }
 
@@ -781,7 +783,7 @@ class DashboardApp {
         if (this.socket && this.socket.readyState === WebSocket.OPEN)
             this.socket.close();
         this.updateConnectionStatus('Logged out', 'connecting');
-        this.updateSessionSummary();
+        this.updateSessionUser();
         this.showLoginOverlay('You have been logged out.');
     }
 
@@ -829,7 +831,7 @@ class DashboardApp {
                 expiresAt: data.expiresAt,
                 username: this.username
             });
-            this.updateSessionSummary();
+            this.updateSessionUser();
         } catch (error) {
             console.warn('Token refresh failed', error);
             this.clearSession();

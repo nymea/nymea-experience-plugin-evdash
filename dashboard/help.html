@@ -84,6 +84,21 @@
             gap: 1rem 1.5rem;
         }
 
+        .session-user {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: #ffffff;
+        }
+
+        .session-user-icon {
+            width: 28px;
+            height: 28px;
+            display: inline-block;
+        }
+
         .status-indicator {
             display: inline-flex;
             align-items: center;
@@ -135,13 +150,6 @@
         .tool-button:hover {
             background: rgba(255, 255, 255, 0.15);
             border-color: #ffffff;
-        }
-
-        .session-details {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-            font-size: 0.95rem;
         }
 
         button.ghost {
@@ -232,10 +240,11 @@
                     <span id="statusDot" class="status-dot connecting" aria-hidden="true"></span>
                     <span id="connectionStatus">Awaiting login…</span>
                 </p>
-                <div class="session-details">
-                    <span id="sessionSummary">Load the dashboard to authenticate.</span>
-                    <button type="button" id="logoutButton" class="ghost hidden">Logout</button>
+                <div class="session-user">
+                    <img src="icons/user.svg" alt="" aria-hidden="true" class="session-user-icon">
+                    <span id="sessionUsername">Load the dashboard to authenticate.</span>
                 </div>
+                <button type="button" id="logoutButton" class="ghost hidden">Logout</button>
                 <a class="tool-button" href="index.html" aria-label="Back to dashboard">⟵</a>
             </div>
         </div>
