@@ -30,18 +30,22 @@
 
 #include "evdashjsonhandler.h"
 #include "evdashengine.h"
+#include "evdashwebserverresource.h"
+
 #include <QLoggingCategory>
 
 Q_DECLARE_LOGGING_CATEGORY(dcEvDashExperience)
 
-EvDashJsonHandler::EvDashJsonHandler(EvDashEngine *engine, QObject *parent):
+EvDashJsonHandler::EvDashJsonHandler(EvDashEngine *engine, EvDashWebServerResource *resource, QObject *parent):
     JsonHandler{parent},
-    m_engine{engine}
+    m_engine{engine},
+    m_resource{resource}
 {
     registerEnum<EvDashEngine::EvDashError>();
 
-    QVariantMap params, returns;
     QString description;
+    QVariantMap params, returns;
+
 
     params.clear(); returns.clear();
     description = "Get the enabled status of EV Dash service.";
@@ -54,16 +58,52 @@ EvDashJsonHandler::EvDashJsonHandler(EvDashEngine *engine, QObject *parent):
     returns.insert("evDashError", enumRef<EvDashEngine::EvDashError>());
     registerMethod("SetEnabled", description, params, returns);
 
+
+    params.clear(); returns.clear();
+    description = "Get the list of available users names.";
+    returns.insert("usernames", enumValueName(StringList));
+    registerMethod("GetUsers", description, params, returns);
+
+    params.clear(); returns.clear();
+    description = "Add a new user with the given username and password.";
+    params.insert("username", enumValueName(String));
+    params.insert("password", enumValueName(String));
+    returns.insert("evDashError", enumRef<EvDashEngine::EvDashError>());
+    registerMethod("AddUser", description, params, returns);
+
+    params.clear(); returns.clear();
+    description = "Remove the user with the given username.";
+    params.insert("username", enumValueName(String));
+    returns.insert("evDashError", enumRef<EvDashEngine::EvDashError>());
+    registerMethod("RemoveUser", description, params, returns);
+
     // Notifications
     params.clear();
     description = "Emitted whenever the EV Dash service has been enabled or disabled.";
     params.insert("enabled", enumValueName(Bool));
     registerNotification("EnabledChanged", description, params);
 
-    connect(m_engine, &EvDashEngine::enabledChanged, this, [=](bool enabled){
+    connect(m_engine, &EvDashEngine::enabledChanged, this, [this](bool enabled){
         emit EnabledChanged({{"enabled", enabled}});
     });
 
+    params.clear();
+    description = "Emitted whenever a new username has been added for the dashboard.";
+    params.insert("username", enumValueName(String));
+    registerNotification("UserAdded", description, params);
+
+    connect(m_resource, &EvDashWebServerResource::userAdded, this, [this](const QString &username){
+        emit UserAdded({{"username", username}});
+    });
+
+    params.clear();
+    description = "Emitted whenever a username has been removed from the dashboard.";
+    params.insert("username", enumValueName(String));
+    registerNotification("UserRemoved", description, params);
+
+    connect(m_resource, &EvDashWebServerResource::userRemoved, this, [this](const QString &username){
+        emit UserRemoved({{"username", username}});
+    });
 }
 
 QString EvDashJsonHandler::name() const
@@ -91,5 +131,38 @@ JsonReply *EvDashJsonHandler::SetEnabled(const QVariantMap &params)
     QVariantMap returns;
     returns.insert("evDashError", enumValueName(error));
     return createReply(returns);
+}
+
+JsonReply *EvDashJsonHandler::GetUsers(const QVariantMap &params)
+{
+    Q_UNUSED(params)
+
+    QVariantMap returns;
+    returns.insert("usernames", m_resource->usernames());
+    return createReply(returns);
+}
+
+JsonReply *EvDashJsonHandler::AddUser(const QVariantMap &params)
+{
+    QString username = params.value("username").toString();
+    QString password = params.value("password").toString();
+
+    EvDashEngine::EvDashError error = m_resource->addUser(username, password);
+
+    QVariantMap returns;
+    returns.insert("evDashError", enumValueName(error));
+    return createReply(returns);
+}
+
+JsonReply *EvDashJsonHandler::RemoveUser(const QVariantMap &params)
+{
+    QString username = params.value("username").toString();
+
+    EvDashEngine::EvDashError error = m_resource->removeUser(username);
+
+    QVariantMap returns;
+    returns.insert("evDashError", enumValueName(error));
+    return createReply(returns);
+
 }
 

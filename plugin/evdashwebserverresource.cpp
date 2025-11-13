@@ -1,10 +1,42 @@
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+*
+* Copyright 2013 - 2025, nymea GmbH
+* Contact: contact@nymea.io
+*
+* This file is part of nymea.
+* This project including source code and documentation is protected by
+* copyright law, and remains the property of nymea GmbH. All rights, including
+* reproduction, publication, editing and translation, are reserved. The use of
+* this project is subject to the terms of a license agreement to be concluded
+* with nymea GmbH in accordance with the terms of use of nymea GmbH, available
+* under https://nymea.io/license
+*
+* GNU General Public License Usage
+* Alternatively, this project may be redistributed and/or modified under the
+* terms of the GNU General Public License as published by the Free Software
+* Foundation, GNU version 3. This project is distributed in the hope that it
+* will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
+* of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General
+* Public License for more details.
+*
+* You should have received a copy of the GNU General Public License along with
+* this project. If not, see <https://www.gnu.org/licenses/>.
+*
+* For any further details and any questions please contact us under
+* contact@nymea.io or see our FAQ/Licensing Information on
+* https://nymea.io/license/faq
+*
+* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
 #include "evdashwebserverresource.h"
+#include "evdashsettings.h"
 
 #include <QFileInfo>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QJsonParseError>
 #include <QUuid>
+#include <QCryptographicHash>
 
 #include <QLoggingCategory>
 Q_DECLARE_LOGGING_CATEGORY(dcEvDashExperience)
@@ -12,7 +44,25 @@ Q_DECLARE_LOGGING_CATEGORY(dcEvDashExperience)
 EvDashWebServerResource::EvDashWebServerResource(QObject *parent)
     : WebServerResource{"/evdash", parent}
 {
+    // Load users
+    EvDashSettings settings;
+    settings.beginGroup("Users");
 
+    foreach (const QString &username, settings.childGroups()) {
+        UserInfo info;
+
+        settings.beginGroup(username);
+        info.username = username;
+        info.passwordHash = settings.value("hash").toString().toUtf8();
+        info.passwordSalt = settings.value("salt").toString().toUtf8();
+        settings.endGroup(); // username
+
+        m_users.insert(username, info);
+    }
+
+    settings.endGroup(); // Users
+
+    qCInfo(dcEvDashExperience()) << "Loaded" << m_users.count() << "users for the dashboard.";
 }
 
 HttpReply *EvDashWebServerResource::processRequest(const HttpRequest &request)
@@ -50,6 +100,72 @@ HttpReply *EvDashWebServerResource::processRequest(const HttpRequest &request)
     // If nothing matches, redirect to main page
     qCWarning(dcEvDashExperience()) << "Resource for debug interface not found. Redirecting to main page...";
     return redirectToIndex();
+}
+
+QStringList EvDashWebServerResource::usernames() const
+{
+    return m_users.keys();
+}
+
+EvDashEngine::EvDashError EvDashWebServerResource::addUser(const QString &username, const QString &password)
+{
+    if (m_users.keys().contains(username)) {
+        qCWarning(dcEvDashExperience()) << "Cannot add new user. There is already a user with the username" << username;
+        return EvDashEngine::EvDashErrorDuplicateUser;
+    }
+
+    if (password.size() < s_minimalPasswordLength) {
+        qCWarning(dcEvDashExperience()) << "Cannot add new user. The given password is to short. The minimum size is" << s_minimalPasswordLength;
+        return EvDashEngine::EvDashErrorBadPassword;
+    }
+
+    UserInfo info;
+    info.username = username;
+    info.passwordSalt = QUuid::createUuid().toString().remove(QRegularExpression("[{}]")).toUtf8();
+    info.passwordHash = QCryptographicHash::hash(QString(password + info.passwordSalt).toUtf8(), QCryptographicHash::Sha3_512).toBase64();
+
+    EvDashSettings settings;
+    settings.beginGroup("Users");
+    settings.beginGroup(username);
+    settings.setValue("hash", QString::fromUtf8(info.passwordHash));
+    settings.setValue("salt", QString::fromUtf8(info.passwordSalt));
+    settings.endGroup(); // username
+    settings.endGroup(); // Users
+
+    qCDebug(dcEvDashExperience()) << "Added successfully new user with username" << username;
+
+    m_users.insert(username, info);
+    emit userAdded(username);
+
+    return EvDashEngine::EvDashErrorNoError;
+}
+
+EvDashEngine::EvDashError EvDashWebServerResource::removeUser(const QString &username)
+{
+    if (!m_users.contains(username)) {
+        qCWarning(dcEvDashExperience()) << "Cannot remove user with username" << username << "because there is no such user.";
+        return EvDashEngine::EvDashErrorUserNotFound;
+    }
+
+    m_users.remove(username);
+
+    foreach (const QString &token, m_activeTokens.keys()) {
+        if (m_activeTokens.value(token).username == username) {
+            qCDebug(dcEvDashExperience()) << "Revoke active token" << token << "for user" << username;
+            m_activeTokens.remove(token);
+        }
+    }
+
+    EvDashSettings settings;
+    settings.beginGroup("Users");
+    settings.remove(username);
+    settings.endGroup(); // Users
+
+    qCDebug(dcEvDashExperience()) << "User with username" << username << "removed successfully";
+
+    emit userRemoved(username);
+
+    return EvDashEngine::EvDashErrorNoError;
 }
 
 HttpReply *EvDashWebServerResource::redirectToIndex()
@@ -156,8 +272,12 @@ HttpReply *EvDashWebServerResource::handleRefreshRequest(const HttpRequest &requ
 
 bool EvDashWebServerResource::verifyCredentials(const QString &username, const QString &password) const
 {
-    Q_UNUSED(username)
-    Q_UNUSED(password)
+    const UserInfo info = m_users.value(username);
+    if (info.passwordHash != QCryptographicHash::hash(QString(password + info.passwordSalt).toUtf8(), QCryptographicHash::Sha3_512).toBase64()) {
+        qCWarning(dcEvDashExperience()) << "Authentication error for user:" << username;
+        return false;
+    }
+
     return true;
 }
 

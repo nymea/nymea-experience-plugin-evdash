@@ -36,23 +36,32 @@
 #include <jsonrpc/jsonhandler.h>
 
 class EvDashEngine;
+class EvDashWebServerResource;
 
 class EvDashJsonHandler : public JsonHandler
 {
     Q_OBJECT
 public:
-    explicit EvDashJsonHandler(EvDashEngine *engine, QObject *parent = nullptr);
+    explicit EvDashJsonHandler(EvDashEngine *engine, EvDashWebServerResource *resource, QObject *parent = nullptr);
 
     QString name() const override;
 
     Q_INVOKABLE JsonReply *GetEnabled(const QVariantMap &params);
     Q_INVOKABLE JsonReply *SetEnabled(const QVariantMap &params);
 
+    Q_INVOKABLE JsonReply *GetUsers(const QVariantMap &params);
+    Q_INVOKABLE JsonReply *AddUser(const QVariantMap &params);
+    Q_INVOKABLE JsonReply *RemoveUser(const QVariantMap &params);
+
 signals:
     void EnabledChanged(const QVariantMap &params);
 
+    void UserAdded(const QVariantMap &params);
+    void UserRemoved(const QVariantMap &params);
+
 private:
     EvDashEngine *m_engine = nullptr;
+    EvDashWebServerResource *m_resource = nullptr;
 
 };
 

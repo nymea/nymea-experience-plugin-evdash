@@ -55,7 +55,7 @@ public:
 
 private:
     EvDashEngine *m_engine = nullptr;
-    EvDashWebServerResource *m_webServerResource = nullptr;
+    EvDashWebServerResource *m_resource = nullptr;
 
 };
 

@@ -52,6 +52,7 @@ public:
         EvDashErrorNoError = 0,
         EvDashErrorBackendError,
         EvDashErrorDuplicateUser,
+        EvDashErrorUserNotFound,
         EvDashErrorBadPassword
     };
     Q_ENUM(EvDashError)
