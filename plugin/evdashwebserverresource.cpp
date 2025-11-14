@@ -31,11 +31,12 @@
 #include "evdashwebserverresource.h"
 #include "evdashsettings.h"
 
-#include <QFileInfo>
-#include <QJsonDocument>
-#include <QJsonObject>
-#include <QJsonParseError>
 #include <QUuid>
+#include <QFileInfo>
+#include <QJsonObject>
+#include <QJsonDocument>
+#include <QJsonParseError>
+#include <QRegularExpression>
 #include <QCryptographicHash>
 
 #include <QLoggingCategory>
