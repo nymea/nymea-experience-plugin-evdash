@@ -410,6 +410,8 @@ QJsonObject EvDashEngine::packCharger(Thing *charger) const
     foreach (const QVariant &chargingInfoVariant, m_energyManagerClient->chargingInfos()) {
         QVariantMap chargingInfo = chargingInfoVariant.toMap();
         if (chargingInfo.value("evChargerId").toUuid() == charger->id()) {
+
+            // Set assigned car name
             if (chargingInfo.value("assignedCarId").toString().isEmpty()) {
                 chargerObject.insert("assignedCar", "");
             } else {
@@ -420,8 +422,13 @@ QJsonObject EvDashEngine::packCharger(Thing *charger) const
                     chargerObject.insert("assignedCar", "");
                 }
             }
+
+            // Set energyManagerMode
+            chargerObject.insert("energyManagerMode", chargingInfo.value("chargingMode").toInt());
         }
     }
+
+
 
     chargerObject.insert("connected", charger->stateValue("connected").toBool());
     chargerObject.insert("status", charger->stateValue("status").toString());

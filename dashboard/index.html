@@ -240,7 +240,6 @@
             display: flex;
             flex-direction: column;
             gap: 1.5rem;
-            max-width: 1100px;
             margin: 0 auto;
             width: 100%;
             flex: 1 1 auto;
@@ -310,6 +309,7 @@
 
         .table-wrapper {
             overflow-x: auto;
+            width: 100%;
         }
 
         table.chargers-table {
@@ -625,11 +625,12 @@
                                 <thead>
                                     <tr>
                                         <th scope="col">Name</th>
+                                        <th scope="col">Car</th>
+                                        <th scope="col">Energy manager mode</th>
                                         <th scope="col">Connected</th>
+                                        <th scope="col">Status</th>
                                         <th scope="col">Charging current</th>
-                                        <th scope="col">Charging allowed</th>
                                         <th scope="col">Current power</th>
-                                        <th scope="col">Plugged in</th>
                                         <th scope="col">Version</th>
                                         <th scope="col">Session energy</th>
                                         <th scope="col">Temperature</th>
@@ -638,7 +639,7 @@
                                 </thead>
                                 <tbody id="chargerTableBody">
                                     <tr id="chargerEmptyRow" class="empty-row">
-                                        <td colspan="10">No chargers loaded yet.</td>
+                                        <td colspan="11">No chargers loaded yet.</td>
                                     </tr>
                                 </tbody>
                             </table>

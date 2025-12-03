@@ -34,11 +34,12 @@ class DashboardApp {
         this.chargerColumns = [
             { key: 'id', label: 'ID', hidden: true },
             { key: 'name', label: 'Name' },
+            { key: 'assignedCar', label: 'Car' },
+            { key: 'energyManagerMode', label: 'Energy manager mode' },
             { key: 'connected', label: 'Connected' },
+            { key: 'status', label: 'Status' },
             { key: 'chargingCurrent', label: 'Charging current' },
-            { key: 'chargingAllowed', label: 'Charging allowed' },
             { key: 'currentPower', label: 'Current power' },
-            { key: 'pluggedIn', label: 'Plugged in' },
             { key: 'version', label: 'Version' },
             { key: 'sessionEnergy', label: 'Session energy' },
             { key: 'temperature', label: 'Temperature' },
@@ -735,27 +736,42 @@ class DashboardApp {
         this.elements.chargerEmptyRow.classList.toggle('hidden', hasChargers);
     }
 
+    formatNumber(value, unit) {
+        if (!Number.isFinite(value))
+            return '—';
+
+        const rounded = Number.parseFloat(value.toFixed(2));
+        return unit ? `${rounded} ${unit}` : String(rounded);
+    }
+
     formatChargerValue(key, value) {
         if (value === null || value === undefined || value === '')
             return '—';
 
-        if ((key === 'currentPower' || key === 'sessionEnergy') && typeof value === 'number') {
-            if (!Number.isFinite(value))
-                return '—';
-            const unit = key === 'currentPower' ? 'kW' : 'kWh';
-            if (key === 'currentPower') {
-                value = value / 1000;
-                return `${value.toFixed(2)} ${unit}`;
-            }
+        if (key === 'energyManagerMode') {
+            const modes = {
+                0: 'Quick',
+                1: 'Eco',
+                2: 'Eco + Time'
+            };
+            if (value in modes)
+                return modes[value];
+            return Number.isFinite(value) ? `Unknown (${value})` : '—';
+        }
 
-            return `${value.toFixed(2)} ${unit}`;
+        if ((key === 'currentPower' || key === 'sessionEnergy') && typeof value === 'number') {
+            const unit = key === 'currentPower' ? 'kW' : 'kWh';
+            if (key === 'currentPower')
+                return this.formatNumber(value / 1000, unit);
+
+            return this.formatNumber(value, unit);
         }
 
         if (typeof value === 'boolean')
             return value ? 'Yes' : 'No';
 
         if (typeof value === 'number')
-            return Number.isFinite(value) ? String(value) : '—';
+            return this.formatNumber(value);
 
         if (typeof value === 'string')
             return value;
