@@ -42,6 +42,7 @@ class QWebSocketServer;
 
 class Thing;
 class ThingManager;
+class EnergyManagerDbusClient;
 class EvDashWebServerResource;
 
 class EvDashEngine : public QObject
@@ -75,8 +76,9 @@ private slots:
 private:
     ThingManager *m_thingManager = nullptr;
     EvDashWebServerResource *m_webServerResource = nullptr;
-
     bool m_enabled = false;
+
+    EnergyManagerDbusClient *m_energyManagerClient = nullptr;
 
     QWebSocketServer *m_webSocketServer = nullptr;
     quint16 m_webSocketPort = 4449;

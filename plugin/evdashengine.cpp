@@ -31,6 +31,7 @@
 #include "evdashengine.h"
 #include "evdashsettings.h"
 #include "evdashwebserverresource.h"
+#include "energymanagerdbusclient.h"
 
 #include <integrations/thingmanager.h>
 
@@ -100,6 +101,44 @@ EvDashEngine::EvDashEngine(ThingManager *thingManager, EvDashWebServerResource *
     m_webSocketPort = settings.value("webSocketServerPort", 4449).toUInt();
     bool enabled = settings.value("enabled", false).toBool();
     settings.endGroup();
+
+
+    m_energyManagerClient = new EnergyManagerDbusClient(this);
+    connect(m_energyManagerClient, &EnergyManagerDbusClient::chargingInfosUpdated, this, [](const QVariantList &chargingInfos){
+        qCDebug(dcEvDashExperience()) << "ChargingInfos:";
+        foreach (const QVariant &ciVariant, chargingInfos) {
+            qCDebug(dcEvDashExperience()) << "-->" << ciVariant.toMap();
+        }
+    });
+
+    connect(m_energyManagerClient, &EnergyManagerDbusClient::chargingInfoAdded, this, [this](const QVariantMap &chargingInfo){
+        qCDebug(dcEvDashExperience()) << "ChargingInfo added:" << chargingInfo;
+        Thing *charger = m_thingManager->findConfiguredThing(chargingInfo.value("evChargerId").toUuid());
+        if (charger) {
+            onThingChanged(charger);
+        }
+    });
+
+    connect(m_energyManagerClient, &EnergyManagerDbusClient::chargingInfoChanged, this, [this](const QVariantMap &chargingInfo){
+        qCDebug(dcEvDashExperience()) << "ChargingInfo changed:" << chargingInfo;
+        Thing *charger = m_thingManager->findConfiguredThing(chargingInfo.value("evChargerId").toUuid());
+        if (charger) {
+            onThingChanged(charger);
+        }
+    });
+
+    connect(m_energyManagerClient, &EnergyManagerDbusClient::chargingInfoRemoved, this, [](const QString &evChargerId){
+        qCDebug(dcEvDashExperience()) << "ChargingInfo removed:" << evChargerId;
+    });
+
+    connect(m_energyManagerClient, &EnergyManagerDbusClient::errorOccurred, this, [](const QString &errorMessage){
+        qCWarning(dcEvDashExperience()) << "Energy manager DBus client error:" << errorMessage;
+    });
+
+    qCDebug(dcEvDashExperience()) << "ChargingInfos:" << m_energyManagerClient->chargingInfos();
+    foreach (const QVariant &ciVariant, m_energyManagerClient->chargingInfos()) {
+        qCDebug(dcEvDashExperience()) << "-->" << ciVariant.toMap();
+    }
 
     // Start the service if enabled
     setEnabled(enabled);
@@ -367,11 +406,27 @@ QJsonObject EvDashEngine::packCharger(Thing *charger) const
     QJsonObject chargerObject;
     chargerObject.insert("id", charger->id().toString(QUuid::WithoutBraces));
     chargerObject.insert("name", charger->name());
+
+    foreach (const QVariant &chargingInfoVariant, m_energyManagerClient->chargingInfos()) {
+        QVariantMap chargingInfo = chargingInfoVariant.toMap();
+        if (chargingInfo.value("evChargerId").toUuid() == charger->id()) {
+            if (chargingInfo.value("assignedCarId").toString().isEmpty()) {
+                chargerObject.insert("assignedCar", "");
+            } else {
+                Thing *car = m_thingManager->findConfiguredThing(chargingInfo.value("assignedCarId").toUuid());
+                if (car) {
+                    chargerObject.insert("assignedCar", car->name());
+                } else {
+                    chargerObject.insert("assignedCar", "");
+                }
+            }
+        }
+    }
+
     chargerObject.insert("connected", charger->stateValue("connected").toBool());
+    chargerObject.insert("status", charger->stateValue("status").toString());
     chargerObject.insert("chargingCurrent", charger->stateValue("maxChargingCurrent").toDouble());
-    chargerObject.insert("chargingAllowed", charger->stateValue("power").toBool());
     chargerObject.insert("currentPower", charger->stateValue("currentPower").toDouble());
-    chargerObject.insert("pluggedIn", charger->stateValue("pluggedIn").toBool());
 
     if (charger->hasState("currentVersion"))
         chargerObject.insert("version", charger->stateValue("currentVersion").toDouble());

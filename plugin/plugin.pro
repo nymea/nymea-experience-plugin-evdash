@@ -9,15 +9,17 @@ PKGCONFIG += nymea
 RESOURCES += ../dashboard.qrc
 
 QT -= gui
-QT += network sql websockets
+QT += network sql websockets dbus
 
 HEADERS += experiencepluginevdash.h \
+    energymanagerdbusclient.h \
     evdashengine.h \
     evdashjsonhandler.h \
     evdashsettings.h \
     evdashwebserverresource.h
 
 SOURCES += experiencepluginevdash.cpp \
+    energymanagerdbusclient.cpp \
     evdashengine.cpp \
     evdashjsonhandler.cpp \
     evdashsettings.cpp \
