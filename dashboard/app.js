@@ -7,6 +7,7 @@ class DashboardApp {
             loginError: document.getElementById('loginError'),
             username: document.getElementById('username'),
             password: document.getElementById('password'),
+            brandLogo: document.getElementById('brandLogo'),
             statusDot: document.getElementById('statusDot'),
             connectionStatus: document.getElementById('connectionStatus'),
             sessionUsername: document.getElementById('sessionUsername'),
@@ -14,6 +15,10 @@ class DashboardApp {
             requestTemplate: document.getElementById('requestTemplate'),
             responseTemplate: document.getElementById('responseTemplate'),
             incomingMessage: document.getElementById('incomingMessage'),
+            easterEggOverlay: document.getElementById('easterEggOverlay'),
+            easterEggCanvas: document.getElementById('easterEggCanvas'),
+            easterEggClose: document.getElementById('easterEggClose'),
+            easterEggScore: document.getElementById('easterEggScore'),
             chargerTableBody: document.getElementById('chargerTableBody'),
             chargerEmptyRow: document.getElementById('chargerEmptyRow'),
             fetchSessionsButton: document.getElementById('fetchSessionsButton'),
@@ -39,6 +44,16 @@ class DashboardApp {
         this.cars = new Map();
         this.sessions = [];
         this.activePanel = null;
+        this.easterEggClickCount = 0;
+        this.easterEggClickResetTimer = null;
+        this.easterEggGame = {
+            running: false,
+            frameId: null,
+            player: { x: 30, y: 30, size: 16, speed: 3.2 },
+            target: { x: 200, y: 140, size: 10 },
+            score: 0,
+            keys: {}
+        };
         this.chargerColumns = [
             { key: 'id', label: 'ID', hidden: true },
             { key: 'name', label: 'Name' },
@@ -85,6 +100,25 @@ class DashboardApp {
         if (this.elements.downloadSessionsButton) {
             this.elements.downloadSessionsButton.addEventListener('click', () => {
                 this.downloadChargingSessionsCsv();
+            });
+        }
+
+        if (this.elements.brandLogo) {
+            this.elements.brandLogo.addEventListener('click', () => {
+                this.handleBrandLogoClick();
+            });
+        }
+
+        if (this.elements.easterEggClose) {
+            this.elements.easterEggClose.addEventListener('click', () => {
+                this.stopEasterEggGame();
+            });
+        }
+
+        if (this.elements.easterEggOverlay) {
+            this.elements.easterEggOverlay.addEventListener('click', event => {
+                if (event.target === this.elements.easterEggOverlay)
+                    this.stopEasterEggGame();
             });
         }
     }
@@ -1244,6 +1278,245 @@ class DashboardApp {
             stringValue = `"${stringValue}"`;
 
         return stringValue;
+    }
+
+    handleBrandLogoClick() {
+        clearTimeout(this.easterEggClickResetTimer);
+        this.easterEggClickCount += 1;
+        this.easterEggClickResetTimer = setTimeout(() => {
+            this.easterEggClickCount = 0;
+        }, 1200);
+
+        if (this.easterEggClickCount >= 10) {
+            this.easterEggClickCount = 0;
+            this.startEasterEggGame();
+        }
+    }
+
+    startEasterEggGame() {
+        if (!this.elements.easterEggOverlay || !this.elements.easterEggCanvas)
+            return;
+
+        this.elements.easterEggOverlay.classList.remove('hidden');
+        this.elements.easterEggOverlay.setAttribute('aria-hidden', 'false');
+
+        const game = this.easterEggGame;
+        const canvas = this.elements.easterEggCanvas;
+        game.running = true;
+        game.score = 0;
+        game.keys = {};
+        game.lastTime = null;
+        game.player.x = canvas.width * 0.2;
+        game.player.y = canvas.height * 0.5;
+        this.spawnEasterEggTarget();
+        this.updateEasterEggScore();
+        this.toggleEasterEggListeners(true);
+
+        const loop = timestamp => {
+            if (!game.running)
+                return;
+
+            if (!game.lastTime)
+                game.lastTime = timestamp;
+            const delta = Math.min((timestamp - game.lastTime) / 16.67, 3);
+            game.lastTime = timestamp;
+
+            this.updateEasterEggPhysics(delta);
+            this.drawEasterEggFrame();
+            game.frameId = window.requestAnimationFrame(loop);
+        };
+
+        game.frameId = window.requestAnimationFrame(loop);
+    }
+
+    stopEasterEggGame() {
+        const game = this.easterEggGame;
+        game.running = false;
+        game.keys = {};
+        if (game.frameId) {
+            window.cancelAnimationFrame(game.frameId);
+            game.frameId = null;
+        }
+
+        if (this.elements.easterEggOverlay) {
+            this.elements.easterEggOverlay.classList.add('hidden');
+            this.elements.easterEggOverlay.setAttribute('aria-hidden', 'true');
+        }
+
+        this.toggleEasterEggListeners(false);
+    }
+
+    toggleEasterEggListeners(enable) {
+        if (!this._easterEggKeyDownHandler) {
+            this._easterEggKeyDownHandler = event => this.handleEasterEggKey(event, true);
+            this._easterEggKeyUpHandler = event => this.handleEasterEggKey(event, false);
+        }
+
+        if (enable) {
+            document.addEventListener('keydown', this._easterEggKeyDownHandler);
+            document.addEventListener('keyup', this._easterEggKeyUpHandler);
+        } else {
+            document.removeEventListener('keydown', this._easterEggKeyDownHandler);
+            document.removeEventListener('keyup', this._easterEggKeyUpHandler);
+        }
+    }
+
+    handleEasterEggKey(event, isDown) {
+        if (!this.easterEggGame.running)
+            return;
+
+        const key = event.key ? event.key.toLowerCase() : '';
+        const movableKeys = ['arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'w', 'a', 's', 'd'];
+        if (key === 'escape') {
+            this.stopEasterEggGame();
+            return;
+        }
+
+        if (movableKeys.includes(key)) {
+            event.preventDefault();
+            this.easterEggGame.keys[key] = isDown;
+        }
+    }
+
+    updateEasterEggPhysics(delta) {
+        const canvas = this.elements.easterEggCanvas;
+        if (!canvas)
+            return;
+
+        const game = this.easterEggGame;
+        const { player, target } = game;
+        const input = {
+            x: (game.keys.arrowright || game.keys.d ? 1 : 0) - (game.keys.arrowleft || game.keys.a ? 1 : 0),
+            y: (game.keys.arrowdown || game.keys.s ? 1 : 0) - (game.keys.arrowup || game.keys.w ? 1 : 0)
+        };
+
+        if (input.x !== 0 || input.y !== 0) {
+            const length = Math.hypot(input.x, input.y) || 1;
+            const speed = player.speed * delta;
+            player.x += (input.x / length) * speed;
+            player.y += (input.y / length) * speed;
+        }
+
+        const minX = player.size;
+        const maxX = canvas.width - player.size;
+        const minY = player.size;
+        const maxY = canvas.height - player.size;
+        player.x = Math.min(Math.max(player.x, minX), maxX);
+        player.y = Math.min(Math.max(player.y, minY), maxY);
+
+        const dx = player.x - target.x;
+        const dy = player.y - target.y;
+        const distance = Math.hypot(dx, dy);
+        if (distance <= player.size + target.size) {
+            game.score += 1;
+            player.speed = Math.min(player.speed + 0.15, 7.5);
+            this.updateEasterEggScore();
+            this.spawnEasterEggTarget();
+        }
+    }
+
+    drawEasterEggFrame() {
+        const canvas = this.elements.easterEggCanvas;
+        if (!canvas)
+            return;
+
+        const ctx = canvas.getContext('2d');
+        const game = this.easterEggGame;
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+        gradient.addColorStop(0, '#0f1c3d');
+        gradient.addColorStop(1, '#092037');
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+        ctx.lineWidth = 1;
+        for (let x = 20; x < canvas.width; x += 40) {
+            ctx.beginPath();
+            ctx.moveTo(x, 0);
+            ctx.lineTo(x, canvas.height);
+            ctx.stroke();
+        }
+        for (let y = 20; y < canvas.height; y += 40) {
+            ctx.beginPath();
+            ctx.moveTo(0, y);
+            ctx.lineTo(canvas.width, y);
+            ctx.stroke();
+        }
+
+        const { player, target } = game;
+        ctx.fillStyle = '#f4b400';
+        ctx.beginPath();
+        ctx.moveTo(target.x, target.y - target.size);
+        ctx.lineTo(target.x - target.size * 0.6, target.y + target.size * 0.2);
+        ctx.lineTo(target.x - target.size * 0.2, target.y + target.size * 0.2);
+        ctx.lineTo(target.x - target.size, target.y + target.size);
+        ctx.lineTo(target.x + target.size * 0.2, target.y + target.size * 0.2);
+        ctx.lineTo(target.x + target.size * 0.6, target.y - target.size * 0.8);
+        ctx.closePath();
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(0,0,0,0.2)';
+        ctx.lineWidth = 1.2;
+        ctx.stroke();
+
+        const carWidth = player.size * 2.4;
+        const carHeight = player.size * 1.4;
+        const carX = player.x - carWidth / 2;
+        const carY = player.y - carHeight / 2;
+
+        const carGradient = ctx.createLinearGradient(carX, carY, carX + carWidth, carY + carHeight);
+        carGradient.addColorStop(0, '#e30a18');
+        carGradient.addColorStop(1, '#f48221');
+        ctx.fillStyle = carGradient;
+
+        ctx.beginPath();
+        ctx.moveTo(carX + carWidth * 0.15, carY + carHeight);
+        ctx.lineTo(carX + carWidth * 0.15, carY + carHeight * 0.55);
+        ctx.lineTo(carX + carWidth * 0.35, carY + carHeight * 0.25);
+        ctx.lineTo(carX + carWidth * 0.65, carY + carHeight * 0.25);
+        ctx.lineTo(carX + carWidth * 0.85, carY + carHeight * 0.55);
+        ctx.lineTo(carX + carWidth * 0.85, carY + carHeight);
+        ctx.closePath();
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        const wheelRadius = player.size * 0.35;
+        const wheelY = carY + carHeight;
+        ctx.fillStyle = '#0d1221';
+        ctx.beginPath();
+        ctx.arc(carX + carWidth * 0.28, wheelY, wheelRadius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(carX + carWidth * 0.72, wheelY, wheelRadius, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = 'rgba(255,255,255,0.35)';
+        ctx.fillRect(carX + carWidth * 0.42, carY + carHeight * 0.32, carWidth * 0.22, carHeight * 0.2);
+    }
+
+    spawnEasterEggTarget() {
+        const canvas = this.elements.easterEggCanvas;
+        if (!canvas)
+            return;
+
+        const target = this.easterEggGame.target;
+        const player = this.easterEggGame.player;
+        const padding = target.size + 12;
+        let attempts = 0;
+        do {
+            target.x = padding + Math.random() * (canvas.width - padding * 2);
+            target.y = padding + Math.random() * (canvas.height - padding * 2);
+            attempts++;
+        } while (Math.hypot(player.x - target.x, player.y - target.y) < player.size * 2 && attempts < 12);
+    }
+
+    updateEasterEggScore() {
+        if (!this.elements.easterEggScore)
+            return;
+        this.elements.easterEggScore.textContent = `Score: ${this.easterEggGame.score}`;
     }
 
     sanitizeFilename(value) {
