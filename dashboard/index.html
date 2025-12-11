@@ -319,34 +319,39 @@
             width: 100%;
         }
 
-        table.chargers-table {
+        table.data-table {
             width: 100%;
             border-collapse: collapse;
             font-size: 0.95rem;
         }
 
-        .chargers-table th,
-        .chargers-table td {
+        .data-table th,
+        .data-table td {
             padding: 0.5rem 0.75rem;
             border-bottom: 1px solid #e4e9f2;
             text-align: left;
         }
 
-        .chargers-table th {
+        .data-table th {
             font-size: 0.75rem;
             text-transform: uppercase;
             letter-spacing: 0.05em;
             color: var(--muted-text-color);
         }
 
-        .chargers-table tbody tr:nth-child(even) {
+        .data-table tbody tr:nth-child(even) {
             background: #f9fbfd;
         }
 
-        .chargers-table .empty-row td {
+        .data-table .empty-row td {
             text-align: center;
             font-style: italic;
             color: var(--muted-text-color);
+        }
+
+        .data-table .numeric {
+            text-align: right;
+            white-space: nowrap;
         }
 
         .value-dot {
@@ -648,7 +653,7 @@
                             </div>
                         </div>
                         <div class="table-wrapper">
-                            <table class="chargers-table">
+                            <table class="data-table chargers-table">
                                 <thead>
                                     <tr>
                                         <th scope="col">Name</th>
@@ -690,6 +695,26 @@
                             </div>
                         </div>
                         <p class="helper-text">Select a charger to filter by its assigned car and fetch sessions from nymea.</p>
+                        <div class="table-wrapper">
+                            <table class="data-table sessions-table">
+                                <thead>
+                                    <tr>
+                                        <th scope="col">Name</th>
+                                        <th scope="col">Charger</th>
+                                        <th scope="col">Car</th>
+                                        <th scope="col">Start</th>
+                                        <th scope="col">End</th>
+                                        <th scope="col">Energy (kWh)</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="chargingSessionsTableBody">
+                                    <tr id="chargingSessionsEmptyRow" class="empty-row">
+                                        <td colspan="6">No charging sessions fetched yet.</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <p class="helper-text">Raw session payload (for debugging).</p>
                         <pre id="chargingSessionsOutput">No charging sessions fetched yet.</pre>
                     </article>
                 </section>

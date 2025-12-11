@@ -18,6 +18,8 @@ class DashboardApp {
             chargerEmptyRow: document.getElementById('chargerEmptyRow'),
             fetchSessionsButton: document.getElementById('fetchSessionsButton'),
             chargerFilter: document.getElementById('chargerFilter'),
+            chargingSessionsTableBody: document.getElementById('chargingSessionsTableBody'),
+            chargingSessionsEmptyRow: document.getElementById('chargingSessionsEmptyRow'),
             chargingSessionsOutput: document.getElementById('chargingSessionsOutput'),
             panelButtons: Array.from(document.querySelectorAll('[data-panel-target]')),
             contentPanels: Array.from(document.querySelectorAll('[data-panel]'))
@@ -869,22 +871,138 @@ class DashboardApp {
     }
 
     renderChargingSessions(sessions, fallbackMessage) {
+        const normalizedSessions = Array.isArray(sessions) ? sessions : [];
+        this.sessions = normalizedSessions;
+
+        this.renderChargingSessionsTable(normalizedSessions, fallbackMessage);
+
         if (!this.elements.chargingSessionsOutput)
             return;
 
-        if (!Array.isArray(sessions) || !sessions.length) {
-            this.sessions = [];
+        if (!normalizedSessions.length) {
             this.elements.chargingSessionsOutput.textContent = fallbackMessage || 'No charging sessions found.';
             return;
         }
 
-        this.sessions = sessions;
         try {
-            this.elements.chargingSessionsOutput.textContent = JSON.stringify(sessions, null, 2);
+            this.elements.chargingSessionsOutput.textContent = JSON.stringify(normalizedSessions, null, 2);
         } catch (error) {
             console.warn('Failed to render charging sessions', error);
             this.elements.chargingSessionsOutput.textContent = 'Unable to display charging sessions.';
         }
+    }
+
+    renderChargingSessionsTable(sessions, fallbackMessage) {
+        const body = this.elements.chargingSessionsTableBody;
+        const emptyRow = this.elements.chargingSessionsEmptyRow;
+        if (!body)
+            return;
+
+        const rows = body.querySelectorAll('tr[data-session-id]');
+        rows.forEach(row => {
+            if (row.parentElement)
+                row.parentElement.removeChild(row);
+        });
+
+        if (!Array.isArray(sessions) || !sessions.length) {
+            if (emptyRow) {
+                const cell = emptyRow.querySelector('td');
+                if (cell)
+                    cell.textContent = fallbackMessage || 'No charging sessions fetched yet.';
+                emptyRow.classList.remove('hidden');
+            }
+            return;
+        }
+
+        if (emptyRow)
+            emptyRow.classList.add('hidden');
+
+        sessions.forEach(session => {
+            body.appendChild(this.buildChargingSessionRow(session));
+        });
+    }
+
+    buildChargingSessionRow(session) {
+        const row = document.createElement('tr');
+        row.dataset.sessionId = session && session.sessionId ? session.sessionId : '';
+
+        const cells = [
+            this.deriveSessionName(session),
+            session && session.chargerName ? session.chargerName : '—',
+            session && session.carName ? session.carName : '—',
+            this.formatTimestamp(session ? session.startTimestamp : null),
+            this.formatTimestamp(session ? session.endTimestamp : null),
+            this.formatSessionEnergy(session)
+        ];
+
+        cells.forEach((value, index) => {
+            const cell = document.createElement('td');
+            if (index === 5)
+                cell.classList.add('numeric');
+            cell.textContent = value;
+            row.appendChild(cell);
+        });
+
+        return row;
+    }
+
+    deriveSessionName(session) {
+        if (!session)
+            return '—';
+
+        if (session.name)
+            return session.name;
+
+        if (session.property)
+            return session.property;
+
+        if (session.sessionId)
+            return `Session ${session.sessionId}`;
+
+        return '—';
+    }
+
+    formatTimestamp(timestamp) {
+        const numeric = typeof timestamp === 'string' ? Number.parseFloat(timestamp) : timestamp;
+        if (!Number.isFinite(numeric))
+            return '—';
+
+        const ms = numeric > 1e12 ? numeric : numeric * 1000;
+        const date = new Date(ms);
+        if (Number.isNaN(date.getTime()))
+            return '—';
+
+        const pad = value => String(value).padStart(2, '0');
+        const day = pad(date.getDate());
+        const month = pad(date.getMonth() + 1);
+        const year = date.getFullYear();
+        const hours = pad(date.getHours());
+        const minutes = pad(date.getMinutes());
+
+        return `${day}.${month}.${year} ${hours}:${minutes}`;
+    }
+
+    formatSessionEnergy(session) {
+        const value = session && Number.isFinite(session.sessionEnergy)
+            ? session.sessionEnergy
+            : this.calculateSessionEnergyFromRange(session);
+        if (!Number.isFinite(value))
+            return '—';
+
+        return `${value.toFixed(2)} kWh`;
+    }
+
+    calculateSessionEnergyFromRange(session) {
+        if (!session)
+            return null;
+
+        const end = typeof session.energyEnd === 'string' ? Number.parseFloat(session.energyEnd) : session.energyEnd;
+        const start = typeof session.energyStart === 'string' ? Number.parseFloat(session.energyStart) : session.energyStart;
+
+        if (!Number.isFinite(end) || !Number.isFinite(start))
+            return null;
+
+        return end - start;
     }
 
     updateConnectionStatus(text, state) {
