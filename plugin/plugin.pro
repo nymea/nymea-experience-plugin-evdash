@@ -13,6 +13,7 @@ QT += network sql websockets dbus
 
 HEADERS += experiencepluginevdash.h \
     energymanagerdbusclient.h \
+    chargingsessionsdbusinterfaceclient.h \
     evdashengine.h \
     evdashjsonhandler.h \
     evdashsettings.h \
@@ -20,6 +21,7 @@ HEADERS += experiencepluginevdash.h \
 
 SOURCES += experiencepluginevdash.cpp \
     energymanagerdbusclient.cpp \
+    chargingsessionsdbusinterfaceclient.cpp \
     evdashengine.cpp \
     evdashjsonhandler.cpp \
     evdashsettings.cpp \

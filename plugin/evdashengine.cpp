@@ -32,6 +32,7 @@
 #include "evdashsettings.h"
 #include "evdashwebserverresource.h"
 #include "energymanagerdbusclient.h"
+#include "chargingsessionsdbusinterfaceclient.h"
 
 #include <integrations/thingmanager.h>
 
@@ -102,7 +103,21 @@ EvDashEngine::EvDashEngine(ThingManager *thingManager, EvDashWebServerResource *
     bool enabled = settings.value("enabled", false).toBool();
     settings.endGroup();
 
+    // ChargingSessions client for fetching charging sessions
+    m_chargingSessionsClient = new ChargingSessionsDBusInterfaceClient(this);
+    connect(m_chargingSessionsClient, &ChargingSessionsDBusInterfaceClient::sessionsReceived, this, [](const QList<QVariantMap> &chargingSessions){
+        qCDebug(dcEvDashExperience()) << "ChargingSessions :";
+        foreach (const QVariant &ciVariant, chargingSessions) {
+            qCDebug(dcEvDashExperience()) << "-->" << ciVariant.toMap();
+        }
+    });
 
+    connect(m_chargingSessionsClient, &ChargingSessionsDBusInterfaceClient::errorOccurred, this, [](const QString &errorMessage){
+        qCWarning(dcEvDashExperience()) << "Charging sessions DBus client error occurred:" << errorMessage;
+    });
+
+
+    // Energy manager client for associated cars and current mode
     m_energyManagerClient = new EnergyManagerDbusClient(this);
     connect(m_energyManagerClient, &EnergyManagerDbusClient::chargingInfosUpdated, this, [](const QVariantList &chargingInfos){
         qCDebug(dcEvDashExperience()) << "ChargingInfos:";
@@ -132,7 +147,7 @@ EvDashEngine::EvDashEngine(ThingManager *thingManager, EvDashWebServerResource *
     });
 
     connect(m_energyManagerClient, &EnergyManagerDbusClient::errorOccurred, this, [](const QString &errorMessage){
-        qCWarning(dcEvDashExperience()) << "Energy manager DBus client error:" << errorMessage;
+        qCWarning(dcEvDashExperience()) << "Energy manager DBus client error occurred:" << errorMessage;
     });
 
     qCDebug(dcEvDashExperience()) << "ChargingInfos:" << m_energyManagerClient->chargingInfos();

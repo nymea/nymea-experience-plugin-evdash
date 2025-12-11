@@ -44,6 +44,7 @@ class Thing;
 class ThingManager;
 class EnergyManagerDbusClient;
 class EvDashWebServerResource;
+class ChargingSessionsDBusInterfaceClient;
 
 class EvDashEngine : public QObject
 {
@@ -79,6 +80,7 @@ private:
     bool m_enabled = false;
 
     EnergyManagerDbusClient *m_energyManagerClient = nullptr;
+    ChargingSessionsDBusInterfaceClient *m_chargingSessionsClient = nullptr;
 
     QWebSocketServer *m_webSocketServer = nullptr;
     quint16 m_webSocketPort = 4449;
