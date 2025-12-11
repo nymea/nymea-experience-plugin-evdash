@@ -17,6 +17,7 @@ class DashboardApp {
             chargerTableBody: document.getElementById('chargerTableBody'),
             chargerEmptyRow: document.getElementById('chargerEmptyRow'),
             fetchSessionsButton: document.getElementById('fetchSessionsButton'),
+            downloadSessionsButton: document.getElementById('downloadSessionsButton'),
             chargerFilter: document.getElementById('chargerFilter'),
             chargingSessionsTableBody: document.getElementById('chargingSessionsTableBody'),
             chargingSessionsEmptyRow: document.getElementById('chargingSessionsEmptyRow'),
@@ -77,6 +78,12 @@ class DashboardApp {
         if (this.elements.fetchSessionsButton) {
             this.elements.fetchSessionsButton.addEventListener('click', () => {
                 this.fetchChargingSessions();
+            });
+        }
+
+        if (this.elements.downloadSessionsButton) {
+            this.elements.downloadSessionsButton.addEventListener('click', () => {
+                this.downloadChargingSessionsCsv();
             });
         }
     }
@@ -1003,6 +1010,85 @@ class DashboardApp {
             return null;
 
         return end - start;
+    }
+
+    downloadChargingSessionsCsv() {
+        const sessions = Array.isArray(this.sessions) ? this.sessions : [];
+        if (!sessions.length) {
+            console.warn('No charging sessions to download.');
+            return;
+        }
+
+        const csvContent = this.buildSessionsCsv(sessions);
+        if (!csvContent) {
+            console.warn('Failed to build CSV for charging sessions.');
+            return;
+        }
+
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `charging-sessions-${new Date().toISOString().slice(0, 10)}.csv`;
+        document.body.appendChild(link);
+        link.click();
+        setTimeout(() => {
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        }, 0);
+    }
+
+    buildSessionsCsv(sessions) {
+        if (!Array.isArray(sessions) || !sessions.length)
+            return '';
+
+        const headers = this.collectSessionColumns(sessions);
+        if (!headers.length)
+            return '';
+
+        const lines = [];
+        lines.push(headers.join(';'));
+        sessions.forEach(session => {
+            const row = headers.map(header => this.escapeCsvValue(session ? session[header] : ''));
+            lines.push(row.join(';'));
+        });
+
+        return lines.join('\n');
+    }
+
+    collectSessionColumns(sessions) {
+        const headers = [];
+        sessions.forEach(session => {
+            if (!session)
+                return;
+            Object.keys(session).forEach(key => {
+                if (!headers.includes(key))
+                    headers.push(key);
+            });
+        });
+        return headers;
+    }
+
+    escapeCsvValue(value) {
+        if (value === null || value === undefined)
+            return '';
+
+        if (typeof value === 'object') {
+            try {
+                value = JSON.stringify(value);
+            } catch (error) {
+                value = String(value);
+            }
+        }
+
+        let stringValue = String(value);
+        if (stringValue.includes('"'))
+            stringValue = stringValue.replace(/"/g, '""');
+
+        if (stringValue.search(/[;\n"]/g) !== -1)
+            stringValue = `"${stringValue}"`;
+
+        return stringValue;
     }
 
     updateConnectionStatus(text, state) {
