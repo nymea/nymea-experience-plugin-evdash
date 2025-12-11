@@ -26,14 +26,13 @@
 
 #include <QDBusArgument>
 #include <QDBusInterface>
+#include <QDBusConnectionInterface>
 #include <QDBusPendingCall>
 #include <QDBusPendingCallWatcher>
 #include <QDBusPendingReply>
 #include <QDBusReply>
 #include <QDBusError>
-#include <QLoggingCategory>
-
-Q_DECLARE_LOGGING_CATEGORY(dcChargingSessions)
+#include <QDBusServiceWatcher>
 
 static const QString kDbusService = QStringLiteral("io.nymea.energy.chargingsessions");
 static const QString kDbusPath = QStringLiteral("/io/nymea/energy/chargingsessions");
@@ -43,8 +42,16 @@ ChargingSessionsDBusInterfaceClient::ChargingSessionsDBusInterfaceClient(QObject
     QObject(parent),
     m_connection(QDBusConnection::systemBus())
 {
-    if (!m_connection.isConnected()) {
-        qCWarning(dcChargingSessions()) << "DBus system bus not connected";
+    m_serviceWatcher = new QDBusServiceWatcher(kDbusService,
+                                               m_connection,
+                                               QDBusServiceWatcher::WatchForRegistration | QDBusServiceWatcher::WatchForUnregistration,
+                                               this);
+    connect(m_serviceWatcher, &QDBusServiceWatcher::serviceRegistered, this, &ChargingSessionsDBusInterfaceClient::onServiceRegistered);
+    connect(m_serviceWatcher, &QDBusServiceWatcher::serviceUnregistered, this, &ChargingSessionsDBusInterfaceClient::onServiceUnregistered);
+
+    QDBusConnectionInterface *bus = m_connection.interface();
+    if (bus && bus->isServiceRegistered(kDbusService)) {
+        onServiceRegistered(kDbusService);
     }
 }
 
@@ -76,7 +83,6 @@ void ChargingSessionsDBusInterfaceClient::onCallFinished(QDBusPendingCallWatcher
     watcher->deleteLater();
 
     if (reply.isError()) {
-        qCWarning(dcChargingSessions()) << "GetSessions DBus call failed:" << reply.error().message();
         emit errorOccurred(reply.error().message());
         return;
     }
@@ -107,17 +113,30 @@ bool ChargingSessionsDBusInterfaceClient::ensureInterface()
     m_interface = nullptr;
 
     if (!m_connection.isConnected()) {
-        qCWarning(dcChargingSessions()) << "DBus system bus not connected";
         return false;
     }
 
     m_interface = new QDBusInterface(kDbusService, kDbusPath, kDbusInterface, m_connection, this);
     if (!m_interface->isValid()) {
-        qCWarning(dcChargingSessions()) << "Charging sessions DBus interface is not available:" << m_connection.lastError().message();
         delete m_interface;
         m_interface = nullptr;
         return false;
     }
 
     return true;
+}
+
+void ChargingSessionsDBusInterfaceClient::onServiceRegistered(const QString &service)
+{
+    Q_UNUSED(service)
+    ensureInterface();
+}
+
+void ChargingSessionsDBusInterfaceClient::onServiceUnregistered(const QString &service)
+{
+    Q_UNUSED(service)
+    if (m_interface) {
+        m_interface->deleteLater();
+    }
+    m_interface = nullptr;
 }

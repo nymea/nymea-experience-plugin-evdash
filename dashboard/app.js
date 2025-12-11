@@ -16,6 +16,9 @@ class DashboardApp {
             incomingMessage: document.getElementById('incomingMessage'),
             chargerTableBody: document.getElementById('chargerTableBody'),
             chargerEmptyRow: document.getElementById('chargerEmptyRow'),
+            fetchSessionsButton: document.getElementById('fetchSessionsButton'),
+            chargerFilter: document.getElementById('chargerFilter'),
+            chargingSessionsOutput: document.getElementById('chargingSessionsOutput'),
             panelButtons: Array.from(document.querySelectorAll('[data-panel-target]')),
             contentPanels: Array.from(document.querySelectorAll('[data-panel]'))
         };
@@ -30,6 +33,7 @@ class DashboardApp {
         this.tokenRefreshTimer = null;
         this.refreshInFlight = false;
         this.chargers = new Map();
+        this.sessions = [];
         this.activePanel = null;
         this.chargerColumns = [
             { key: 'id', label: 'ID', hidden: true },
@@ -51,6 +55,7 @@ class DashboardApp {
         this.initializePanelNavigation();
         this.restoreSession();
         this.toggleChargerEmptyState();
+        this.updateChargerSelector();
     }
 
     attachEventListeners() {
@@ -64,6 +69,12 @@ class DashboardApp {
         if (this.elements.logoutButton) {
             this.elements.logoutButton.addEventListener('click', () => {
                 this.logout();
+            });
+        }
+
+        if (this.elements.fetchSessionsButton) {
+            this.elements.fetchSessionsButton.addEventListener('click', () => {
+                this.fetchChargingSessions();
             });
         }
     }
@@ -341,6 +352,7 @@ class DashboardApp {
         this.refreshInFlight = false;
         this.chargers.clear();
         this.resetChargerTable();
+        this.renderChargingSessions([], 'No charging sessions fetched yet.');
 
         try {
             window.localStorage.removeItem(this.sessionKey);
@@ -460,6 +472,20 @@ class DashboardApp {
             return true;
         }
 
+        if (type === 'getchargingsessions') {
+            if (data.success) {
+                const payload = data && data.payload ? data.payload : {};
+                const sessions = Array.isArray(payload.sessions) ? payload.sessions : [];
+                this.renderChargingSessions(sessions, 'No charging sessions found.');
+            } else if (data.error === 'unauthenticated') {
+                this.onAuthenticationFailed('unauthenticated');
+            } else {
+                console.warn('GetChargingSessions request failed', data.error || 'unknownError');
+                this.renderChargingSessions([], 'Failed to fetch charging sessions.');
+            }
+            return true;
+        }
+
         return false;
     }
 
@@ -477,6 +503,11 @@ class DashboardApp {
 
         if (Array.isArray(payload.chargers)) {
             this.processChargerList(payload.chargers);
+            return true;
+        }
+
+        if (Array.isArray(payload.sessions)) {
+            this.renderChargingSessions(payload.sessions);
             return true;
         }
 
@@ -500,6 +531,10 @@ class DashboardApp {
             return true;
         case 'chargerremoved':
             this.removeCharger(payload);
+            return true;
+        case 'chargingsessionsupdated':
+            if (payload && Array.isArray(payload.sessions))
+                this.renderChargingSessions(payload.sessions);
             return true;
         default:
             return false;
@@ -581,6 +616,19 @@ class DashboardApp {
         return this.sendAction('GetChargers', { });
     }
 
+    fetchChargingSessions() {
+        const payload = {};
+        const chargerId = this.elements.chargerFilter ? this.elements.chargerFilter.value : '';
+        if (chargerId)
+            payload.chargerId = chargerId;
+
+        const requestId = this.sendAction('GetChargingSessions', payload);
+        if (!requestId)
+            this.renderChargingSessions([], 'Unable to request charging sessions. Check the connection status.');
+
+        return requestId;
+    }
+
     processChargerList(chargers = []) {
         if (!Array.isArray(chargers)) {
             console.warn('Expected chargers array in payload.');
@@ -600,6 +648,8 @@ class DashboardApp {
             if (!seen.has(existingId))
                 this.removeCharger(existingId);
         }
+
+        this.updateChargerSelector();
     }
 
     upsertCharger(charger) {
@@ -613,6 +663,7 @@ class DashboardApp {
         merged.thingId = key;
         this.chargers.set(key, merged);
         this.syncChargerRow(merged, !hasExisting);
+        this.updateChargerSelector();
     }
 
     syncChargerRow(charger, forceCreate = false) {
@@ -687,6 +738,7 @@ class DashboardApp {
             row.parentElement.removeChild(row);
 
         this.toggleChargerEmptyState();
+        this.updateChargerSelector();
     }
 
     resetChargerTable() {
@@ -700,6 +752,7 @@ class DashboardApp {
         });
 
         this.toggleChargerEmptyState();
+        this.updateChargerSelector();
     }
 
     findChargerRow(chargerId) {
@@ -734,6 +787,37 @@ class DashboardApp {
 
         const hasChargers = this.chargers && this.chargers.size > 0;
         this.elements.chargerEmptyRow.classList.toggle('hidden', hasChargers);
+    }
+
+    updateChargerSelector() {
+        const select = this.elements.chargerFilter;
+        if (!select)
+            return;
+
+        const currentValue = select.value;
+        while (select.options.length > 0)
+            select.remove(0);
+
+        const defaultOption = document.createElement('option');
+        defaultOption.value = '';
+        defaultOption.textContent = 'All chargers';
+        select.appendChild(defaultOption);
+
+        const chargers = Array.from(this.chargers.values())
+            .sort((a, b) => (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' }));
+
+        chargers.forEach(charger => {
+            const option = document.createElement('option');
+            option.value = this.getChargerKey(charger) || '';
+            option.textContent = charger.name || option.value;
+            select.appendChild(option);
+        });
+
+        const hasValue = currentValue && select.querySelector
+            && typeof CSS !== 'undefined' && CSS.escape
+            && select.querySelector(`option[value="${CSS.escape(currentValue)}"]`);
+
+        select.value = hasValue ? currentValue : '';
     }
 
     formatNumber(value, unit) {
@@ -781,6 +865,25 @@ class DashboardApp {
         } catch (error) {
             console.warn(`Failed to stringify value for ${key}`, error);
             return '—';
+        }
+    }
+
+    renderChargingSessions(sessions, fallbackMessage) {
+        if (!this.elements.chargingSessionsOutput)
+            return;
+
+        if (!Array.isArray(sessions) || !sessions.length) {
+            this.sessions = [];
+            this.elements.chargingSessionsOutput.textContent = fallbackMessage || 'No charging sessions found.';
+            return;
+        }
+
+        this.sessions = sessions;
+        try {
+            this.elements.chargingSessionsOutput.textContent = JSON.stringify(sessions, null, 2);
+        } catch (error) {
+            console.warn('Failed to render charging sessions', error);
+            this.elements.chargingSessionsOutput.textContent = 'Unable to display charging sessions.';
         }
     }
 

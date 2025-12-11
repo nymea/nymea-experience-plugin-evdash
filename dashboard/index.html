@@ -283,6 +283,13 @@
             margin-bottom: 1rem;
         }
 
+        .action-row {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
         .eyebrow {
             margin: 0;
             font-size: 0.8rem;
@@ -475,6 +482,22 @@
             box-shadow: 0 0 0 3px rgba(162, 13, 23, 0.2);
         }
 
+        select {
+            border-radius: 10px;
+            border: 1px solid #d3dce6;
+            padding: 0.65rem 1rem;
+            font-size: 1rem;
+            background: #f9fbfd;
+            color: var(--text-color);
+            min-width: 200px;
+        }
+
+        select:focus {
+            outline: none;
+            border-color: var(--secondary-color);
+            box-shadow: 0 0 0 3px rgba(162, 13, 23, 0.2);
+        }
+
         button {
             border: none;
             border-radius: 999px;
@@ -600,6 +623,10 @@
                     <span>Chargers</span>
                     <span class="side-nav-subtitle">Live table & telemetry</span>
                 </button>
+                <button type="button" class="side-nav-button" data-panel-target="chargingSessions" aria-pressed="false">
+                    <span>Charging sessions</span>
+                    <span class="side-nav-subtitle">History fetched via nymea</span>
+                </button>
                 <button type="button" class="side-nav-button" data-panel-target="help" aria-pressed="false">
                     <span>Help</span>
                     <span class="side-nav-subtitle">API contract & logs</span>
@@ -644,6 +671,26 @@
                                 </tbody>
                             </table>
                         </div>
+                    </article>
+                </section>
+
+                <section class="content-panel" data-panel="chargingSessions" aria-labelledby="chargingSessionsTitle" aria-hidden="true">
+                    <article class="card">
+                        <div class="card-header">
+                            <div>
+                                <p class="eyebrow">History</p>
+                                <h2 id="chargingSessionsTitle">Charging sessions</h2>
+                            </div>
+                            <div class="action-row">
+                                <label class="sr-only" for="chargerFilter">Charger</label>
+                                <select id="chargerFilter" name="chargerFilter">
+                                    <option value="">All chargers</option>
+                                </select>
+                                <button type="button" id="fetchSessionsButton" class="primary">Fetch sessions</button>
+                            </div>
+                        </div>
+                        <p class="helper-text">Select a charger to filter by its assigned car and fetch sessions from nymea.</p>
+                        <pre id="chargingSessionsOutput">No charging sessions fetched yet.</pre>
                     </article>
                 </section>
 

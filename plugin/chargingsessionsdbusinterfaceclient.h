@@ -29,9 +29,11 @@
 #include <QList>
 #include <QVariantMap>
 #include <QStringList>
+#include <QDBusServiceWatcher>
 
 class QDBusInterface;
 class QDBusPendingCallWatcher;
+class QDBusServiceWatcher;
 
 class ChargingSessionsDBusInterfaceClient : public QObject
 {
@@ -51,11 +53,14 @@ signals:
 
 private slots:
     void onCallFinished(QDBusPendingCallWatcher *watcher);
+    void onServiceRegistered(const QString &service);
+    void onServiceUnregistered(const QString &service);
 
 private:
     bool ensureInterface();
 
     QDBusConnection m_connection;
     QDBusInterface *m_interface = nullptr;
+    QDBusServiceWatcher *m_serviceWatcher = nullptr;
     QList<QVariantMap> m_sessions;
 };

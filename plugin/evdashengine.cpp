@@ -46,6 +46,7 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QJsonArray>
+#include <QUuid>
 
 #include <QLoggingCategory>
 Q_DECLARE_LOGGING_CATEGORY(dcEvDashExperience)
@@ -105,16 +106,11 @@ EvDashEngine::EvDashEngine(ThingManager *thingManager, EvDashWebServerResource *
 
     // ChargingSessions client for fetching charging sessions
     m_chargingSessionsClient = new ChargingSessionsDBusInterfaceClient(this);
-    connect(m_chargingSessionsClient, &ChargingSessionsDBusInterfaceClient::sessionsReceived, this, [](const QList<QVariantMap> &chargingSessions){
-        qCDebug(dcEvDashExperience()) << "ChargingSessions :";
-        foreach (const QVariant &ciVariant, chargingSessions) {
-            qCDebug(dcEvDashExperience()) << "-->" << ciVariant.toMap();
-        }
-    });
+    connect(m_chargingSessionsClient, &ChargingSessionsDBusInterfaceClient::sessionsReceived,
+            this, &EvDashEngine::onSessionsReceived);
 
-    connect(m_chargingSessionsClient, &ChargingSessionsDBusInterfaceClient::errorOccurred, this, [](const QString &errorMessage){
-        qCWarning(dcEvDashExperience()) << "Charging sessions DBus client error occurred:" << errorMessage;
-    });
+    connect(m_chargingSessionsClient, &ChargingSessionsDBusInterfaceClient::errorOccurred,
+            this, &EvDashEngine::onSessionsError);
 
 
     // Energy manager client for associated cars and current mode
@@ -307,11 +303,13 @@ void EvDashEngine::processTextMessage(QWebSocket *socket, const QString &message
     }
 
     QJsonObject response = handleApiRequest(socket, requestObject);
-    sendReply(socket, response);
+    if (!response.isEmpty()) {
+        sendReply(socket, response);
 
-    if (isAuthenticateAction && !response.value(QStringLiteral("success")).toBool()) {
-        socket->close(QWebSocketProtocol::CloseCodePolicyViolated, QStringLiteral("Authentication failed"));
-        m_authenticatedClients.remove(socket);
+        if (isAuthenticateAction && !response.value(QStringLiteral("success")).toBool()) {
+            socket->close(QWebSocketProtocol::CloseCodePolicyViolated, QStringLiteral("Authentication failed"));
+            m_authenticatedClients.remove(socket);
+        }
     }
 }
 
@@ -366,6 +364,19 @@ QJsonObject EvDashEngine::handleApiRequest(QWebSocket *socket, const QJsonObject
         return createSuccessResponse(requestId, payload);
     }
 
+    if (action.compare(QStringLiteral("GetChargingSessions"), Qt::CaseInsensitive) == 0) {
+        if (!m_chargingSessionsClient)
+            return createErrorResponse(requestId, QStringLiteral("chargingSessionsUnavailable"));
+
+        const QJsonObject payload = request.value(QStringLiteral("payload")).toObject();
+        const QString chargerId = payload.value(QStringLiteral("chargerId")).toString();
+        const QStringList carThingIds = carThingIdsForCharger(chargerId);
+
+        m_pendingChargingSessionsRequests.insert(requestId, QPointer<QWebSocket>(socket));
+        m_chargingSessionsClient->getSessions(carThingIds);
+        return {};
+    }
+
     return createErrorResponse(requestId, QStringLiteral("unknownAction"));
 }
 
@@ -384,6 +395,9 @@ void EvDashEngine::sendNotification(const QString &notification, QJsonObject pay
     // Send to all active clients
 
     for (QWebSocket *client : qAsConst(m_clients)) {
+        if (m_authenticatedClients.value(client).isEmpty())
+            continue;
+
         QJsonObject notificationObject;
         notificationObject.insert(QStringLiteral("requestId"), QUuid::createUuid().toString(QUuid::WithoutBraces));
         notificationObject.insert("event", notification);
@@ -464,4 +478,63 @@ QJsonObject EvDashEngine::packCharger(Thing *charger) const
 
 
     return chargerObject;
+}
+
+QStringList EvDashEngine::carThingIdsForCharger(const QString &chargerId) const
+{
+    QStringList carThingIds;
+    if (!m_energyManagerClient || chargerId.isEmpty())
+        return carThingIds;
+
+    const QUuid chargerUuid = QUuid::fromString(chargerId);
+    if (chargerUuid.isNull())
+        return carThingIds;
+
+    for (const QVariant &ciVariant : m_energyManagerClient->chargingInfos()) {
+        const QVariantMap chargingInfo = ciVariant.toMap();
+        if (chargingInfo.value(QStringLiteral("evChargerId")).toUuid() != chargerUuid)
+            continue;
+
+        const QString assignedCarId = chargingInfo.value(QStringLiteral("assignedCarId")).toString();
+        if (!assignedCarId.isEmpty())
+            carThingIds.append(assignedCarId);
+        break;
+    }
+
+    return carThingIds;
+}
+
+void EvDashEngine::onSessionsReceived(const QList<QVariantMap> &sessions)
+{
+    qCDebug(dcEvDashExperience()) << "ChargingSessions received:" << sessions.count();
+
+    QJsonArray sessionArray;
+    for (const QVariantMap &session : sessions)
+        sessionArray.append(QJsonObject::fromVariantMap(session));
+
+    QJsonObject payload;
+    payload.insert(QStringLiteral("sessions"), sessionArray);
+
+    const QList<QString> pendingRequestIds = m_pendingChargingSessionsRequests.keys();
+    for (const QString &requestId : pendingRequestIds) {
+        QPointer<QWebSocket> socket = m_pendingChargingSessionsRequests.take(requestId);
+        if (!socket)
+            continue;
+        sendReply(socket, createSuccessResponse(requestId, payload));
+    }
+
+    sendNotification(QStringLiteral("chargingSessionsUpdated"), payload);
+}
+
+void EvDashEngine::onSessionsError(const QString &errorMessage)
+{
+    qCWarning(dcEvDashExperience()) << "Charging sessions DBus client error occurred:" << errorMessage;
+
+    const QList<QString> pendingRequestIds = m_pendingChargingSessionsRequests.keys();
+    for (const QString &requestId : pendingRequestIds) {
+        QPointer<QWebSocket> socket = m_pendingChargingSessionsRequests.take(requestId);
+        if (!socket)
+            continue;
+        sendReply(socket, createErrorResponse(requestId, errorMessage));
+    }
 }
