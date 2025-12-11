@@ -26,7 +26,7 @@
         body {
             margin: 0;
             font-family: "UniversLTStd", "Segoe UI", Roboto, sans-serif;
-            background: var(--background-color);
+            background: var(--surface-color);
             color: var(--text-color);
             min-height: 100vh;
             display: flex;
@@ -49,7 +49,7 @@
 
         header {
             grid-area: header;
-            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            background: var(--background-color);
             color: #ffffff;
             padding: 2rem 1.5rem;
             box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
@@ -409,10 +409,10 @@
             grid-area: footer;
             text-align: center;
             padding: 1.25rem 1rem;
-            background: #ffffff;
-            border-top: 1px solid #d3dce6;
+            background: var(--background-color);
+            border-top: 1px solid rgba(0, 0, 0, 0.08);
             font-size: 0.9rem;
-            color: var(--muted-text-color);
+            color: #ffffff;
             position: relative;
             z-index: 2;
         }
@@ -621,7 +621,6 @@
             <div class="side-panel-header">
                 <p class="eyebrow">Workspace</p>
                 <h2>Overview</h2>
-                <p>Switch between live status and built-in documentation.</p>
             </div>
             <nav class="side-nav" aria-label="Sections">
                 <button type="button" class="side-nav-button active" data-panel-target="chargers" aria-pressed="true">
@@ -630,15 +629,15 @@
                 </button>
                 <button type="button" class="side-nav-button" data-panel-target="chargingSessions" aria-pressed="false">
                     <span>Charging sessions</span>
-                    <span class="side-nav-subtitle">History fetched via nymea</span>
+                    <span class="side-nav-subtitle">History of charging sessions</span>
                 </button>
                 <button type="button" class="side-nav-button" data-panel-target="help" aria-pressed="false">
                     <span>Help</span>
-                    <span class="side-nav-subtitle">API contract & logs</span>
+                    <span class="side-nav-subtitle">API concept & debug logs</span>
                 </button>
             </nav>
             <div class="side-panel-footer">
-                Built for nymea experience plugins.
+                Version 1.0.0
             </div>
         </aside>
 
@@ -715,8 +714,6 @@
                                 </tbody>
                             </table>
                         </div>
-                        <p class="helper-text">Raw session payload (for debugging).</p>
-                        <pre id="chargingSessionsOutput">No charging sessions fetched yet.</pre>
                     </article>
                 </section>
 
@@ -750,6 +747,17 @@
                             <p class="helper-text">Sign in to reuse the stored session and inspect backend payloads.</p>
                         </div>
                         <pre id="incomingMessage">No messages received yet.</pre>
+                    </article>
+
+                    <article class="card">
+                        <div class="card-header">
+                            <div>
+                                <p class="eyebrow">Debugging</p>
+                                <h2>Charging sessions payload</h2>
+                            </div>
+                            <p class="helper-text">Raw session JSON for troubleshooting.</p>
+                        </div>
+                        <pre id="chargingSessionsOutput">No charging sessions fetched yet.</pre>
                     </article>
 
                     <article class="card">

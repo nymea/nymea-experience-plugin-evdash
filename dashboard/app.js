@@ -588,6 +588,7 @@ class DashboardApp {
         this.updateSessionUser();
         this.sendGetCars();
         this.sendGetChargers();
+        this.fetchChargingSessions();
     }
 
     onAuthenticationFailed(reason) {
@@ -1117,11 +1118,14 @@ class DashboardApp {
             return;
         }
 
+        const carId = this.elements.carFilter ? this.elements.carFilter.value : '';
+        const carName = carId && this.cars.has(carId) ? this.cars.get(carId).name : '';
+        const carSuffix = carName ? `-${this.sanitizeFilename(carName)}` : '';
         const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
-        link.download = `charging-sessions-${new Date().toISOString().slice(0, 10)}.csv`;
+        link.download = `charging-sessions${carSuffix}-${new Date().toISOString().slice(0, 10)}.csv`;
         document.body.appendChild(link);
         link.click();
         setTimeout(() => {
@@ -1240,6 +1244,21 @@ class DashboardApp {
             stringValue = `"${stringValue}"`;
 
         return stringValue;
+    }
+
+    sanitizeFilename(value) {
+        if (typeof value !== 'string')
+            return '';
+
+        const trimmed = value.trim();
+        if (!trimmed.length)
+            return '';
+
+        return trimmed
+            .replace(/[^a-z0-9-_]+/gi, '-')
+            .replace(/-+/g, '-')
+            .replace(/^-|-$/g, '')
+            .toLowerCase();
     }
 
     updateConnectionStatus(text, state) {
