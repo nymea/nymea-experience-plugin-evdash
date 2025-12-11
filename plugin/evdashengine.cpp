@@ -56,12 +56,17 @@ EvDashEngine::EvDashEngine(ThingManager *thingManager, EvDashWebServerResource *
     m_thingManager{thingManager},
     m_webServerResource{webServerResource}
 {
-    Things evChargers = m_thingManager->configuredThings().filterByInterface("evcharger");
+    Things configuredThings = m_thingManager->configuredThings();
+    foreach (Thing *thing, configuredThings) {
+        if (isChargerThing(thing)) {
+            m_chargers.append(thing);
+            monitorChargerThing(thing);
+        }
 
-    // Init charger list
-    foreach (Thing *chargerThing, evChargers) {
-        m_chargers.append(chargerThing);
-        monitorChargerThing(chargerThing);
+        if (isCarThing(thing)) {
+            m_cars.append(thing);
+            monitorCarThing(thing);
+        }
     }
 
     connect(m_thingManager, &ThingManager::thingAdded, this, &EvDashEngine::onThingAdded);
@@ -191,10 +196,16 @@ bool EvDashEngine::setEnabled(bool enabled)
 
 void EvDashEngine::onThingAdded(Thing *thing)
 {
-    if (thing->thingClass().interfaces().contains("evcharger")) {
+    if (isChargerThing(thing)) {
         m_chargers.append(thing);
         monitorChargerThing(thing);
         sendNotification("ChargerAdded", packCharger(thing));
+    }
+
+    if (isCarThing(thing)) {
+        m_cars.append(thing);
+        monitorCarThing(thing);
+        sendNotification("CarAdded", packCar(thing));
     }
 }
 
@@ -205,16 +216,43 @@ void EvDashEngine::onThingRemoved(const ThingId &thingId)
             qCDebug(dcEvDashExperience()) << "Charger has been removed.";
             m_chargers.removeAll(thing);
             sendNotification("ChargerRemoved", packCharger(thing));
+            break;
+        }
+    }
+
+    foreach (Thing *thing, m_cars) {
+        if (thing->id() == thingId) {
+            qCDebug(dcEvDashExperience()) << "Car has been removed.";
+            m_cars.removeAll(thing);
+            sendNotification("CarRemoved", packCar(thing));
+            break;
         }
     }
 }
 
 void EvDashEngine::onThingChanged(Thing *thing)
 {
-    sendNotification("ChargerChanged", packCharger(thing));
+    if (isChargerThing(thing))
+        sendNotification("ChargerChanged", packCharger(thing));
+
+    if (isCarThing(thing))
+        sendNotification("CarChanged", packCar(thing));
 }
 
 void EvDashEngine::monitorChargerThing(Thing *thing)
+{
+    connect(thing, &Thing::stateValueChanged, this, [this, thing](const StateTypeId &stateTypeId, const QVariant &value, const QVariant &minValue, const QVariant &maxValue, const QVariantList &possibleValues){
+        Q_UNUSED(stateTypeId)
+        Q_UNUSED(value)
+        Q_UNUSED(minValue)
+        Q_UNUSED(maxValue)
+        Q_UNUSED(possibleValues)
+
+        onThingChanged(thing);
+    });
+}
+
+void EvDashEngine::monitorCarThing(Thing *thing)
 {
     connect(thing, &Thing::stateValueChanged, this, [this, thing](const StateTypeId &stateTypeId, const QVariant &value, const QVariant &minValue, const QVariant &maxValue, const QVariantList &possibleValues){
         Q_UNUSED(stateTypeId)
@@ -356,11 +394,24 @@ QJsonObject EvDashEngine::handleApiRequest(QWebSocket *socket, const QJsonObject
 
         QJsonObject payload;
         QJsonArray chargerList;
-        for (Thing *charger : m_thingManager->configuredThings().filterByInterface("evcharger")) {
-            chargerList.append(packCharger(charger));
+        foreach (Thing *thing, m_thingManager->configuredThings()) {
+            if (isChargerThing(thing))
+                chargerList.append(packCharger(thing));
         }
 
         payload.insert(QStringLiteral("chargers"), chargerList);
+        return createSuccessResponse(requestId, payload);
+    }
+
+    if (action.compare(QStringLiteral("GetCars"), Qt::CaseInsensitive) == 0) {
+        QJsonObject payload;
+        QJsonArray carList;
+        foreach (Thing *thing, m_thingManager->configuredThings()) {
+            if (isCarThing(thing))
+                carList.append(packCar(thing));
+        }
+
+        payload.insert(QStringLiteral("cars"), carList);
         return createSuccessResponse(requestId, payload);
     }
 
@@ -369,8 +420,19 @@ QJsonObject EvDashEngine::handleApiRequest(QWebSocket *socket, const QJsonObject
             return createErrorResponse(requestId, QStringLiteral("chargingSessionsUnavailable"));
 
         const QJsonObject payload = request.value(QStringLiteral("payload")).toObject();
-        const QString chargerId = payload.value(QStringLiteral("chargerId")).toString();
-        const QStringList carThingIds = carThingIdsForCharger(chargerId);
+        QStringList carThingIds;
+
+        const QString carId = payload.value(QStringLiteral("carId")).toString();
+        if (!carId.isEmpty()) {
+            const QUuid carUuid = QUuid::fromString(carId);
+            if (carUuid.isNull())
+                return createErrorResponse(requestId, QStringLiteral("invalidCarId"));
+            carThingIds.append(carUuid.toString(QUuid::WithoutBraces));
+        } else {
+            const QString chargerId = payload.value(QStringLiteral("chargerId")).toString();
+            if (!chargerId.isEmpty())
+                carThingIds = carThingIdsForCharger(chargerId);
+        }
 
         m_pendingChargingSessionsRequests.insert(requestId, QPointer<QWebSocket>(socket));
         m_chargingSessionsClient->getSessions(carThingIds);
@@ -478,6 +540,36 @@ QJsonObject EvDashEngine::packCharger(Thing *charger) const
 
 
     return chargerObject;
+}
+
+QJsonObject EvDashEngine::packCar(Thing *car) const
+{
+    QJsonObject carObject;
+    if (!car)
+        return carObject;
+
+    carObject.insert("id", car->id().toString(QUuid::WithoutBraces));
+    carObject.insert("name", car->name());
+
+    return carObject;
+}
+
+bool EvDashEngine::isChargerThing(Thing *thing) const
+{
+    if (!thing)
+        return false;
+
+    const QStringList interfaces = thing->thingClass().interfaces();
+    return interfaces.contains(QStringLiteral("evcharger"));
+}
+
+bool EvDashEngine::isCarThing(Thing *thing) const
+{
+    if (!thing)
+        return false;
+
+    const QStringList interfaces = thing->thingClass().interfaces();
+    return interfaces.contains(QStringLiteral("electricvehicle"));
 }
 
 QStringList EvDashEngine::carThingIdsForCharger(const QString &chargerId) const

@@ -18,7 +18,7 @@ class DashboardApp {
             chargerEmptyRow: document.getElementById('chargerEmptyRow'),
             fetchSessionsButton: document.getElementById('fetchSessionsButton'),
             downloadSessionsButton: document.getElementById('downloadSessionsButton'),
-            chargerFilter: document.getElementById('chargerFilter'),
+            carFilter: document.getElementById('carFilter'),
             chargingSessionsTableBody: document.getElementById('chargingSessionsTableBody'),
             chargingSessionsEmptyRow: document.getElementById('chargingSessionsEmptyRow'),
             chargingSessionsOutput: document.getElementById('chargingSessionsOutput'),
@@ -36,6 +36,7 @@ class DashboardApp {
         this.tokenRefreshTimer = null;
         this.refreshInFlight = false;
         this.chargers = new Map();
+        this.cars = new Map();
         this.sessions = [];
         this.activePanel = null;
         this.chargerColumns = [
@@ -58,7 +59,7 @@ class DashboardApp {
         this.initializePanelNavigation();
         this.restoreSession();
         this.toggleChargerEmptyState();
-        this.updateChargerSelector();
+        this.updateCarSelector();
     }
 
     attachEventListeners() {
@@ -360,7 +361,9 @@ class DashboardApp {
         this.tokenRefreshTimer = null;
         this.refreshInFlight = false;
         this.chargers.clear();
+        this.cars.clear();
         this.resetChargerTable();
+        this.updateCarSelector();
         this.renderChargingSessions([], 'No charging sessions fetched yet.');
 
         try {
@@ -481,6 +484,19 @@ class DashboardApp {
             return true;
         }
 
+        if (type === 'getcars') {
+            if (data.success) {
+                const payload = data && data.payload ? data.payload : {};
+                const cars = Array.isArray(payload.cars) ? payload.cars : [];
+                this.processCarList(cars);
+            } else if (data.error === 'unauthenticated') {
+                this.onAuthenticationFailed('unauthenticated');
+            } else {
+                console.warn('GetCars request failed', data.error || 'unknownError');
+            }
+            return true;
+        }
+
         if (type === 'getchargingsessions') {
             if (data.success) {
                 const payload = data && data.payload ? data.payload : {};
@@ -515,6 +531,11 @@ class DashboardApp {
             return true;
         }
 
+        if (Array.isArray(payload.cars)) {
+            this.processCarList(payload.cars);
+            return true;
+        }
+
         if (Array.isArray(payload.sessions)) {
             this.renderChargingSessions(payload.sessions);
             return true;
@@ -522,6 +543,11 @@ class DashboardApp {
 
         if (payload.charger) {
             this.upsertCharger(payload.charger);
+            return true;
+        }
+
+        if (payload.car) {
+            this.upsertCar(payload.car);
             return true;
         }
 
@@ -541,6 +567,13 @@ class DashboardApp {
         case 'chargerremoved':
             this.removeCharger(payload);
             return true;
+        case 'caradded':
+        case 'carchanged':
+            this.upsertCar(payload);
+            return true;
+        case 'carremoved':
+            this.removeCar(payload);
+            return true;
         case 'chargingsessionsupdated':
             if (payload && Array.isArray(payload.sessions))
                 this.renderChargingSessions(payload.sessions);
@@ -553,6 +586,7 @@ class DashboardApp {
     onAuthenticationSucceeded() {
         this.updateConnectionStatus('Connected', 'connected');
         this.updateSessionUser();
+        this.sendGetCars();
         this.sendGetChargers();
     }
 
@@ -621,15 +655,19 @@ class DashboardApp {
         return this.sendAction('ping', { timestamp: new Date().toISOString() });
     }
 
+    sendGetCars() {
+        return this.sendAction('GetCars', { });
+    }
+
     sendGetChargers() {
         return this.sendAction('GetChargers', { });
     }
 
     fetchChargingSessions() {
         const payload = {};
-        const chargerId = this.elements.chargerFilter ? this.elements.chargerFilter.value : '';
-        if (chargerId)
-            payload.chargerId = chargerId;
+        const carId = this.elements.carFilter ? this.elements.carFilter.value : '';
+        if (carId)
+            payload.carId = carId;
 
         const requestId = this.sendAction('GetChargingSessions', payload);
         if (!requestId)
@@ -657,8 +695,6 @@ class DashboardApp {
             if (!seen.has(existingId))
                 this.removeCharger(existingId);
         }
-
-        this.updateChargerSelector();
     }
 
     upsertCharger(charger) {
@@ -672,7 +708,6 @@ class DashboardApp {
         merged.thingId = key;
         this.chargers.set(key, merged);
         this.syncChargerRow(merged, !hasExisting);
-        this.updateChargerSelector();
     }
 
     syncChargerRow(charger, forceCreate = false) {
@@ -747,7 +782,6 @@ class DashboardApp {
             row.parentElement.removeChild(row);
 
         this.toggleChargerEmptyState();
-        this.updateChargerSelector();
     }
 
     resetChargerTable() {
@@ -761,7 +795,6 @@ class DashboardApp {
         });
 
         this.toggleChargerEmptyState();
-        this.updateChargerSelector();
     }
 
     findChargerRow(chargerId) {
@@ -798,8 +831,67 @@ class DashboardApp {
         this.elements.chargerEmptyRow.classList.toggle('hidden', hasChargers);
     }
 
-    updateChargerSelector() {
-        const select = this.elements.chargerFilter;
+    processCarList(cars = []) {
+        if (!Array.isArray(cars)) {
+            console.warn('Expected cars array in payload.');
+            return;
+        }
+
+        const seen = new Set();
+        cars.forEach(car => {
+            const key = this.getCarKey(car);
+            if (!key)
+                return;
+            seen.add(key);
+            this.upsertCar(car);
+        });
+
+        for (const existingId of Array.from(this.cars.keys())) {
+            if (!seen.has(existingId))
+                this.removeCar(existingId);
+        }
+    }
+
+    upsertCar(car) {
+        const key = this.getCarKey(car);
+        if (!key)
+            return;
+
+        const hasExisting = this.cars.has(key);
+        const previous = hasExisting ? this.cars.get(key) : {};
+        const merged = { ...previous, ...car };
+        merged.thingId = key;
+        this.cars.set(key, merged);
+        this.updateCarSelector();
+    }
+
+    removeCar(identifier) {
+        const key = this.getCarKey(identifier);
+        if (!key)
+            return;
+
+        this.cars.delete(key);
+        this.updateCarSelector();
+    }
+
+    getCarKey(source) {
+        if (!source)
+            return null;
+
+        if (typeof source === 'string')
+            return source;
+
+        if (source.thingId)
+            return source.thingId;
+
+        if (source.id)
+            return source.id;
+
+        return null;
+    }
+
+    updateCarSelector() {
+        const select = this.elements.carFilter;
         if (!select)
             return;
 
@@ -809,16 +901,16 @@ class DashboardApp {
 
         const defaultOption = document.createElement('option');
         defaultOption.value = '';
-        defaultOption.textContent = 'All chargers';
+        defaultOption.textContent = 'All cars';
         select.appendChild(defaultOption);
 
-        const chargers = Array.from(this.chargers.values())
+        const cars = Array.from(this.cars.values())
             .sort((a, b) => (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' }));
 
-        chargers.forEach(charger => {
+        cars.forEach(car => {
             const option = document.createElement('option');
-            option.value = this.getChargerKey(charger) || '';
-            option.textContent = charger.name || option.value;
+            option.value = this.getCarKey(car) || '';
+            option.textContent = car.name || option.value;
             select.appendChild(option);
         });
 

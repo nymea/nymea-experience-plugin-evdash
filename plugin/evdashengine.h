@@ -92,10 +92,14 @@ private:
 
     QList<Thing *> m_chargers;
     void monitorChargerThing(Thing *thing);
+    QList<Thing *> m_cars;
+    void monitorCarThing(Thing *thing);
 
     // Pending requests waiting for charging sessions data to return
     QHash<QString, QPointer<QWebSocket>> m_pendingChargingSessionsRequests;
     QStringList carThingIdsForCharger(const QString &chargerId) const;
+    bool isChargerThing(Thing *thing) const;
+    bool isCarThing(Thing *thing) const;
 
     // Websocket server
     bool startWebSocketServer(quint16 port = 0);
@@ -111,6 +115,7 @@ private:
     QJsonObject createErrorResponse(const QString &requestId, const QString &errorMessage) const;
 
     QJsonObject packCharger(Thing *charger) const;
+    QJsonObject packCar(Thing *car) const;
     void onSessionsReceived(const QList<QVariantMap> &sessions);
     void onSessionsError(const QString &errorMessage);
 
