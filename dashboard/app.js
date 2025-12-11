@@ -1042,35 +1042,94 @@ class DashboardApp {
         if (!Array.isArray(sessions) || !sessions.length)
             return '';
 
-        const headers = this.collectSessionColumns(sessions);
-        if (!headers.length)
-            return '';
+        const columns = [
+            { label: 'Session ID', key: 'sessionId' },
+            { label: 'Charger name', key: 'chargerName' },
+            { label: 'Charger serial number', key: 'chargerSerialNumber' },
+            { label: 'Car', key: 'carName' },
+            { label: 'Start', key: 'startTimestamp', formatter: value => this.formatCsvTimestamp(value) },
+            { label: 'End', key: 'endTimestamp', formatter: value => this.formatCsvTimestamp(value) },
+            { label: 'Energy [kWh]', key: 'sessionEnergy' },
+            { label: 'Meter start [kWh]', key: 'energyStart' },
+            { label: 'Meter end [kWh]', key: 'energyEnd' }
+        ];
 
         const lines = [];
-        lines.push(headers.join(';'));
+        lines.push(columns.map(column => column.label).join(';'));
         sessions.forEach(session => {
-            const row = headers.map(header => this.escapeCsvValue(session ? session[header] : ''));
+            const row = columns.map(column => {
+                const raw = session ? session[column.key] : '';
+                const formatted = typeof column.formatter === 'function'
+                    ? column.formatter(raw)
+                    : this.formatCsvPrimitive(raw);
+                return this.escapeCsvValue(formatted);
+            });
             lines.push(row.join(';'));
         });
 
         return lines.join('\n');
     }
 
-    collectSessionColumns(sessions) {
-        const headers = [];
-        sessions.forEach(session => {
-            if (!session)
-                return;
-            Object.keys(session).forEach(key => {
-                if (!headers.includes(key))
-                    headers.push(key);
-            });
-        });
-        return headers;
+    formatCsvPrimitive(value) {
+        if (value === null || value === undefined)
+            return '';
+
+        if (typeof value === 'number')
+            return Number.isFinite(value) ? String(value) : '';
+
+        if (typeof value === 'string') {
+            const trimmed = value.trim();
+            return trimmed.length ? trimmed : '';
+        }
+
+        if (Array.isArray(value)) {
+            if (!value.length)
+                return '';
+            try {
+                return JSON.stringify(value);
+            } catch (error) {
+                return '';
+            }
+        }
+
+        if (typeof value === 'object') {
+            if (!Object.keys(value).length)
+                return '';
+            try {
+                return JSON.stringify(value);
+            } catch (error) {
+                return '';
+            }
+        }
+
+        return String(value);
+    }
+
+    formatCsvTimestamp(value) {
+        const numeric = typeof value === 'string' ? Number.parseFloat(value) : value;
+        if (!Number.isFinite(numeric))
+            return '';
+
+        const ms = numeric > 1e12 ? numeric : numeric * 1000;
+        const date = new Date(ms);
+        if (Number.isNaN(date.getTime()))
+            return '';
+
+        const pad = part => String(part).padStart(2, '0');
+        const day = pad(date.getDate());
+        const month = pad(date.getMonth() + 1);
+        const year = date.getFullYear();
+        const hours = pad(date.getHours());
+        const minutes = pad(date.getMinutes());
+
+        return `${day}.${month}.${year} ${hours}:${minutes}`;
     }
 
     escapeCsvValue(value) {
         if (value === null || value === undefined)
+            return '';
+
+        if (typeof value === 'number' && !Number.isFinite(value))
             return '';
 
         if (typeof value === 'object') {
