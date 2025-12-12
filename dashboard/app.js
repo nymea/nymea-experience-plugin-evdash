@@ -66,7 +66,8 @@ class DashboardApp {
             { key: 'version', label: 'Version' },
             { key: 'sessionEnergy', label: 'Session energy' },
             { key: 'temperature', label: 'Temperature' },
-            { key: 'chargingPhases', label: 'Charging phases' }
+            { key: 'chargingPhases', label: 'Charging phases' },
+            { key: 'digitalInputMode', label: 'Digital input' }
         ];
 
         this.renderStaticTemplates();
@@ -973,6 +974,18 @@ class DashboardApp {
                 0: 'Quick',
                 1: 'Eco',
                 2: 'Eco + Time'
+            };
+            if (value in modes)
+                return modes[value];
+            return Number.isFinite(value) ? `Unknown (${value})` : '—';
+        }
+
+        if (key === 'digitalInputMode') {
+            const modes = {
+                0: 'Charging allowed',
+                1: 'Charging allowed inverted',
+                2: 'PWM and S0 signaling',
+                3: 'Limit and S0 signaling'
             };
             if (value in modes)
                 return modes[value];

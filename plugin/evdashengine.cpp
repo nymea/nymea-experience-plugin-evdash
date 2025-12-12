@@ -519,12 +519,11 @@ QJsonObject EvDashEngine::packCharger(Thing *charger) const
         }
     }
 
-
-
     chargerObject.insert("connected", charger->stateValue("connected").toBool());
-    chargerObject.insert("status", charger->stateValue("status").toString());
     chargerObject.insert("chargingCurrent", charger->stateValue("maxChargingCurrent").toDouble());
     chargerObject.insert("currentPower", charger->stateValue("currentPower").toDouble());
+    chargerObject.insert("pluggedIn", charger->stateValue("pluggedIn").toBool());
+    chargerObject.insert("chargingAllowed", charger->stateValue("power").toBool());
 
     if (charger->hasState("currentVersion"))
         chargerObject.insert("version", charger->stateValue("currentVersion").toDouble());
@@ -532,12 +531,21 @@ QJsonObject EvDashEngine::packCharger(Thing *charger) const
     if (charger->hasState("sessionEnergy"))
         chargerObject.insert("sessionEnergy", charger->stateValue("sessionEnergy").toDouble());
 
-    if (charger->hasState("temperature"))
-        chargerObject.insert("temperature", charger->stateValue("temperature").toDouble());
-
     if (charger->hasState("desiredPhaseCount"))
         chargerObject.insert("chargingPhases", charger->stateValue("desiredPhaseCount").toInt());
 
+    // PCE specific
+    if (charger->hasState("temperature"))
+        chargerObject.insert("temperature", charger->stateValue("temperature").toDouble());
+
+    if (charger->hasState("error"))
+        chargerObject.insert("error", charger->stateValue("error").toString());
+
+    if (charger->hasState("status"))
+        chargerObject.insert("status", charger->stateValue("status").toString());
+
+    if (charger->hasState("digitalInputMode"))
+        chargerObject.insert("digitalInputMode", charger->stateValue("digitalInputMode").toInt());
 
     return chargerObject;
 }
