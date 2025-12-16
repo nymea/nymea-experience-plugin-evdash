@@ -43,6 +43,7 @@ class QWebSocket;
 class QWebSocketServer;
 
 class Thing;
+class LogEngine;
 class ThingManager;
 class EnergyManagerDbusClient;
 class EvDashWebServerResource;
@@ -61,7 +62,7 @@ public:
     };
     Q_ENUM(EvDashError)
 
-    explicit EvDashEngine(ThingManager *thingManager, EvDashWebServerResource *webServerResource, QObject *parent = nullptr);
+    explicit EvDashEngine(ThingManager *thingManager, LogEngine *logEngine, EvDashWebServerResource *webServerResource, QObject *parent = nullptr);
     ~EvDashEngine() override;
 
     bool enabled() const;
@@ -78,6 +79,7 @@ private slots:
 
 private:
     ThingManager *m_thingManager = nullptr;
+    LogEngine *m_logEngine = nullptr;
     EvDashWebServerResource *m_webServerResource = nullptr;
     bool m_enabled = false;
 

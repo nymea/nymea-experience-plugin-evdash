@@ -35,6 +35,7 @@
 #include "chargingsessionsdbusinterfaceclient.h"
 
 #include <integrations/thingmanager.h>
+#include <logging/logengine.h>
 
 #include <QWebSocket>
 #include <QWebSocketServer>
@@ -51,9 +52,10 @@
 #include <QLoggingCategory>
 Q_DECLARE_LOGGING_CATEGORY(dcEvDashExperience)
 
-EvDashEngine::EvDashEngine(ThingManager *thingManager, EvDashWebServerResource *webServerResource, QObject *parent)
+EvDashEngine::EvDashEngine(ThingManager *thingManager, LogEngine *logEngine, EvDashWebServerResource *webServerResource, QObject *parent)
     : QObject{parent},
     m_thingManager{thingManager},
+    m_logEngine{logEngine},
     m_webServerResource{webServerResource}
 {
     Things configuredThings = m_thingManager->configuredThings();
@@ -525,6 +527,28 @@ QJsonObject EvDashEngine::packCharger(Thing *charger) const
     chargerObject.insert("pluggedIn", charger->stateValue("pluggedIn").toBool());
     chargerObject.insert("chargingAllowed", charger->stateValue("power").toBool());
 
+    QString stateName = "power";
+    chargerObject.insert(stateName, charger->stateValue(stateName).toString());
+    QString source = QString("state-%1-%2").arg(charger->id().toString(QUuid::WithBraces), stateName);
+    LogFetchJob *job = m_logEngine->fetchLogEntries(
+        {source},
+        {stateName},
+        {}, {}, {},                       // start/end/filter
+        Types::SampleRateAny,
+        Qt::DescendingOrder,
+        0, 1                               // offset, limit
+        );
+
+    connect(job, &LogFetchJob::finished, this, [](const LogEntries &entries) {
+        if (entries.isEmpty()) {
+            qCDebug(dcEvDashExperience()) << "##### Last state change unknwon";
+            return;
+        }
+
+        //qint64 lastChangeMs = entries.first().timestamp().toMSecsSinceEpoch();
+        qCDebug(dcEvDashExperience()) << "##### Last state change" << entries.first().timestamp().toString();
+    });
+
     if (charger->hasState("currentVersion"))
         chargerObject.insert("version", charger->stateValue("currentVersion").toDouble());
 
@@ -541,8 +565,10 @@ QJsonObject EvDashEngine::packCharger(Thing *charger) const
     if (charger->hasState("error"))
         chargerObject.insert("error", charger->stateValue("error").toString());
 
-    if (charger->hasState("status"))
-        chargerObject.insert("status", charger->stateValue("status").toString());
+    if (charger->hasState("status")) {
+
+
+    }
 
     if (charger->hasState("digitalInputMode"))
         chargerObject.insert("digitalInputMode", charger->stateValue("digitalInputMode").toInt());
