@@ -471,7 +471,9 @@
         }
 
         input[type="text"],
-        input[type="password"] {
+        input[type="password"],
+        input[type="datetime-local"],
+        input[type="date"] {
             border-radius: 10px;
             border: 1px solid #d3dce6;
             padding: 0.75rem 1rem;
@@ -481,7 +483,9 @@
         }
 
         input[type="text"]:focus,
-        input[type="password"]:focus {
+        input[type="password"]:focus,
+        input[type="datetime-local"]:focus,
+        input[type="date"]:focus {
             outline: none;
             border-color: var(--secondary-color);
             box-shadow: 0 0 0 3px rgba(162, 13, 23, 0.2);
@@ -736,11 +740,15 @@
                                 <select id="carFilter" name="carFilter">
                                     <option value="">All cars</option>
                                 </select>
+                                <label class="sr-only" for="sessionStartFilter">Start date</label>
+                                <input type="date" id="sessionStartFilter" name="sessionStartFilter">
+                                <label class="sr-only" for="sessionEndFilter">End date</label>
+                                <input type="date" id="sessionEndFilter" name="sessionEndFilter">
                                 <button type="button" id="fetchSessionsButton" class="primary">Fetch sessions</button>
                                 <button type="button" id="downloadSessionsButton">Download CSV</button>
                             </div>
                         </div>
-                        <p class="helper-text">Select a car to filter charging sessions fetched from nymea.</p>
+                        <p class="helper-text">Optionally filter charging sessions by car and time range before downloading.</p>
                         <div class="table-wrapper">
                             <table class="data-table sessions-table">
                                 <thead>

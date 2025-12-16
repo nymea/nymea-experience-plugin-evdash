@@ -24,6 +24,8 @@ class DashboardApp {
             fetchSessionsButton: document.getElementById('fetchSessionsButton'),
             downloadSessionsButton: document.getElementById('downloadSessionsButton'),
             carFilter: document.getElementById('carFilter'),
+            sessionStartFilter: document.getElementById('sessionStartFilter'),
+            sessionEndFilter: document.getElementById('sessionEndFilter'),
             chargingSessionsTableBody: document.getElementById('chargingSessionsTableBody'),
             chargingSessionsEmptyRow: document.getElementById('chargingSessionsEmptyRow'),
             chargingSessionsOutput: document.getElementById('chargingSessionsOutput'),
@@ -109,6 +111,18 @@ class DashboardApp {
         if (this.elements.downloadSessionsButton) {
             this.elements.downloadSessionsButton.addEventListener('click', () => {
                 this.downloadChargingSessionsCsv();
+            });
+        }
+
+        if (this.elements.sessionStartFilter) {
+            this.elements.sessionStartFilter.addEventListener('change', () => {
+                this.renderChargingSessionsTable(this.sessions);
+            });
+        }
+
+        if (this.elements.sessionEndFilter) {
+            this.elements.sessionEndFilter.addEventListener('change', () => {
+                this.renderChargingSessionsTable(this.sessions);
             });
         }
 
@@ -1053,17 +1067,28 @@ class DashboardApp {
         if (!body)
             return;
 
+        const normalizedSessions = Array.isArray(sessions) ? sessions : [];
+        const filteredSessions = this.filterChargingSessionsByTimeRange(normalizedSessions);
+        const hasTimeRangeFilter = this.hasChargingSessionTimeRangeFilter();
+
         const rows = body.querySelectorAll('tr[data-session-id]');
         rows.forEach(row => {
             if (row.parentElement)
                 row.parentElement.removeChild(row);
         });
 
-        if (!Array.isArray(sessions) || !sessions.length) {
+        if (!normalizedSessions.length || !filteredSessions.length) {
             if (emptyRow) {
                 const cell = emptyRow.querySelector('td');
-                if (cell)
-                    cell.textContent = fallbackMessage || 'No charging sessions fetched yet.';
+                if (cell) {
+                    if (!normalizedSessions.length) {
+                        cell.textContent = fallbackMessage || 'No charging sessions fetched yet.';
+                    } else if (hasTimeRangeFilter) {
+                        cell.textContent = 'No charging sessions match the selected time range.';
+                    } else {
+                        cell.textContent = fallbackMessage || 'No charging sessions found.';
+                    }
+                }
                 emptyRow.classList.remove('hidden');
             }
             return;
@@ -1072,8 +1097,103 @@ class DashboardApp {
         if (emptyRow)
             emptyRow.classList.add('hidden');
 
-        sessions.forEach(session => {
+        filteredSessions.forEach(session => {
             body.appendChild(this.buildChargingSessionRow(session));
+        });
+    }
+
+    hasChargingSessionTimeRangeFilter() {
+        const start = this.elements.sessionStartFilter ? this.elements.sessionStartFilter.value : '';
+        const end = this.elements.sessionEndFilter ? this.elements.sessionEndFilter.value : '';
+        return !!start || !!end;
+    }
+
+    getChargingSessionTimeRangeMs() {
+        const startValue = this.elements.sessionStartFilter ? this.elements.sessionStartFilter.value : '';
+        const endValue = this.elements.sessionEndFilter ? this.elements.sessionEndFilter.value : '';
+        const startMs = this.parseDateInputToMs(startValue, { endOfDay: false });
+        const endMs = this.parseDateInputToMs(endValue, { endOfDay: true });
+
+        if (this.elements.sessionStartFilter)
+            this.elements.sessionStartFilter.setCustomValidity('');
+        if (this.elements.sessionEndFilter)
+            this.elements.sessionEndFilter.setCustomValidity('');
+
+        if (Number.isFinite(startMs) && Number.isFinite(endMs) && startMs > endMs) {
+            const message = 'Start date must be earlier than end date.';
+            if (this.elements.sessionStartFilter)
+                this.elements.sessionStartFilter.setCustomValidity(message);
+            if (this.elements.sessionEndFilter)
+                this.elements.sessionEndFilter.setCustomValidity(message);
+            return { startMs: null, endMs: null };
+        }
+
+        return {
+            startMs: Number.isFinite(startMs) ? startMs : null,
+            endMs: Number.isFinite(endMs) ? endMs : null
+        };
+    }
+
+    parseDateInputToMs(value, options = {}) {
+        if (!value)
+            return null;
+
+        const match = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+        if (!match)
+            return null;
+
+        const year = Number.parseInt(match[1], 10);
+        const month = Number.parseInt(match[2], 10);
+        const day = Number.parseInt(match[3], 10);
+        if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day))
+            return null;
+
+        const date = new Date(year, month - 1, day);
+        let ms = date.getTime();
+        if (!Number.isFinite(ms))
+            return null;
+
+        if (options && options.endOfDay)
+            ms += 24 * 60 * 60 * 1000 - 1;
+
+        return ms;
+    }
+
+    normalizeTimestampToMs(timestamp) {
+        const numeric = typeof timestamp === 'string' ? Number.parseFloat(timestamp) : timestamp;
+        if (!Number.isFinite(numeric))
+            return null;
+
+        const ms = numeric > 1e12 ? numeric : numeric * 1000;
+        return Number.isFinite(ms) ? ms : null;
+    }
+
+    filterChargingSessionsByTimeRange(sessions) {
+        if (!Array.isArray(sessions) || !sessions.length)
+            return [];
+
+        const { startMs, endMs } = this.getChargingSessionTimeRangeMs();
+        if (!Number.isFinite(startMs) && !Number.isFinite(endMs))
+            return sessions;
+
+        return sessions.filter(session => {
+            const sessionStart = this.normalizeTimestampToMs(session ? session.startTimestamp : null);
+            const sessionEnd = this.normalizeTimestampToMs(session ? session.endTimestamp : null);
+            const effectiveStart = Number.isFinite(sessionStart) ? sessionStart : null;
+            const effectiveEnd = Number.isFinite(sessionEnd)
+                ? sessionEnd
+                : (Number.isFinite(sessionStart) ? sessionStart : null);
+
+            if (!Number.isFinite(effectiveStart) && !Number.isFinite(effectiveEnd))
+                return true;
+
+            if (Number.isFinite(startMs) && Number.isFinite(effectiveEnd) && effectiveEnd < startMs)
+                return false;
+
+            if (Number.isFinite(endMs) && Number.isFinite(effectiveStart) && effectiveStart > endMs)
+                return false;
+
+            return true;
         });
     }
 
@@ -1161,7 +1281,7 @@ class DashboardApp {
     }
 
     downloadChargingSessionsCsv() {
-        const sessions = Array.isArray(this.sessions) ? this.sessions : [];
+        const sessions = this.filterChargingSessionsByTimeRange(this.sessions);
         if (!sessions.length) {
             console.warn('No charging sessions to download.');
             return;
