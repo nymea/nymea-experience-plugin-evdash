@@ -72,11 +72,31 @@
 <body>
     <main class="redirect-panel">
         <img src="styles/pce/icon.svg" alt="EV Dash logo">
-        <h1>Help moved into the dashboard</h1>
-        <p>The help content now lives inside the built-in side panel. You will be redirected automatically.</p>
-        <a href="index.html#help">Open EV Dash</a>
+        <h1 id="redirectTitle">Help moved into the dashboard</h1>
+        <p id="redirectText">The help content now lives inside the built-in side panel. You will be redirected automatically.</p>
+        <a id="redirectLink" href="index.html#help">Open EV Dash</a>
     </main>
     <script>
+        const isGerman = (() => {
+            const candidates = Array.isArray(navigator.languages) && navigator.languages.length
+                ? navigator.languages
+                : [navigator.language || 'en'];
+            return candidates
+                .filter(Boolean)
+                .map(value => String(value).toLowerCase())
+                .some(value => value === 'de' || value.startsWith('de-'));
+        })();
+
+        if (isGerman) {
+            try { document.documentElement.lang = 'de'; } catch (error) { /* ignore */ }
+            const title = document.getElementById('redirectTitle');
+            const text = document.getElementById('redirectText');
+            const link = document.getElementById('redirectLink');
+            if (title) title.textContent = 'Hilfe wurde ins Dashboard verschoben';
+            if (text) text.textContent = 'Die Hilfe befindet sich jetzt im integrierten Seitenbereich. Du wirst automatisch weitergeleitet.';
+            if (link) link.textContent = 'EV Dash öffnen';
+        }
+
         window.addEventListener('load', () => {
             try {
                 window.location.replace('index.html#help');

@@ -649,44 +649,44 @@
                     <img src="styles/pce/icon.svg" alt="EV Dash logo" class="brand-logo" id="brandLogo">
                     <div class="brand-text">
                         <h1>EV Dash</h1>
-                        <p>Monitor & troubleshoot EV chargers.</p>
+                        <p data-i18n="header.tagline">Monitor & troubleshoot EV chargers.</p>
                     </div>
                 </div>
                 <div class="session-panel">
                     <p class="status-indicator">
                         <span id="statusDot" class="status-dot connecting" aria-hidden="true"></span>
-                        <span id="connectionStatus">Awaiting login…</span>
+                        <span id="connectionStatus" data-i18n="header.awaitingLogin">Awaiting login…</span>
                     </p>
                     <div class="session-user">
                         <img src="icons/user.svg" alt="" aria-hidden="true" class="session-user-icon">
-                        <span id="sessionUsername">Awaiting login…</span>
+                        <span id="sessionUsername" data-i18n="header.awaitingLogin">Awaiting login…</span>
                     </div>
-                    <button type="button" id="logoutButton" class="ghost hidden">Logout</button>
+                    <button type="button" id="logoutButton" class="ghost hidden" data-i18n="header.logout">Logout</button>
                 </div>
             </div>
         </header>
 
-        <aside class="side-panel" aria-label="Dashboard sections">
+        <aside class="side-panel" aria-label="Dashboard sections" data-i18n="sidebar.dashboardSections" data-i18n-attr="aria-label">
             <div class="side-panel-header">
-                <p class="eyebrow">Workspace</p>
-                <h2>Overview</h2>
+                <p class="eyebrow" data-i18n="sidebar.workspace">Workspace</p>
+                <h2 data-i18n="sidebar.overview">Overview</h2>
             </div>
-            <nav class="side-nav" aria-label="Sections">
+            <nav class="side-nav" aria-label="Sections" data-i18n="sidebar.sections" data-i18n-attr="aria-label">
                 <button type="button" class="side-nav-button active" data-panel-target="chargers" aria-pressed="true">
-                    <span>Chargers</span>
-                    <span class="side-nav-subtitle">Live table & telemetry</span>
+                    <span data-i18n="sidebar.chargers">Chargers</span>
+                    <span class="side-nav-subtitle" data-i18n="sidebar.chargersSubtitle">Live table & telemetry</span>
                 </button>
                 <button type="button" class="side-nav-button" data-panel-target="chargingSessions" aria-pressed="false">
-                    <span>Charging sessions</span>
-                    <span class="side-nav-subtitle">History of charging sessions</span>
+                    <span data-i18n="sidebar.sessions">Charging sessions</span>
+                    <span class="side-nav-subtitle" data-i18n="sidebar.sessionsSubtitle">History of charging sessions</span>
                 </button>
                 <button type="button" class="side-nav-button" data-panel-target="help" aria-pressed="false">
-                    <span>Help</span>
-                    <span class="side-nav-subtitle">API concept & debug logs</span>
+                    <span data-i18n="sidebar.help">Help</span>
+                    <span class="side-nav-subtitle" data-i18n="sidebar.helpSubtitle">API concept & debug logs</span>
                 </button>
             </nav>
             <div class="side-panel-footer">
-                Version 1.0.0
+                <span data-i18n="sidebar.version">Version</span> 1.0.0
             </div>
         </aside>
 
@@ -696,31 +696,31 @@
                     <article class="card">
                         <div class="card-header">
                             <div>
-                                <p class="eyebrow">Live overview</p>
-                                <h2 id="chargersTitle">Chargers</h2>
+                                <p class="eyebrow" data-i18n="chargers.liveOverview">Live overview</p>
+                                <h2 id="chargersTitle" data-i18n="chargers.title">Chargers</h2>
                             </div>
                         </div>
                         <div class="table-wrapper">
                             <table class="data-table chargers-table">
                                 <thead>
                                     <tr>
-                                        <th scope="col">Name</th>
-                                        <th scope="col">Car</th>
-                                        <th scope="col">Energy manager mode</th>
-                                        <th scope="col">Connected</th>
-                                        <th scope="col">Status</th>
-                                        <th scope="col">Charging current</th>
-                                        <th scope="col">Charging phases</th>
-                                        <th scope="col">Current power</th>
-                                        <th scope="col">Session energy</th>
-                                        <th scope="col">Version</th>
-                                        <th scope="col">Temperature</th>
-                                        <th scope="col">Digital input</th>
+                                        <th scope="col" data-i18n="chargers.columns.name">Name</th>
+                                        <th scope="col" data-i18n="chargers.columns.car">Car</th>
+                                        <th scope="col" data-i18n="chargers.columns.energyManagerMode">Energy manager mode</th>
+                                        <th scope="col" data-i18n="chargers.columns.connected">Connected</th>
+                                        <th scope="col" data-i18n="chargers.columns.status">Status</th>
+                                        <th scope="col" data-i18n="chargers.columns.chargingCurrent">Charging current</th>
+                                        <th scope="col" data-i18n="chargers.columns.chargingPhases">Charging phases</th>
+                                        <th scope="col" data-i18n="chargers.columns.currentPower">Current power</th>
+                                        <th scope="col" data-i18n="chargers.columns.sessionEnergy">Session energy</th>
+                                        <th scope="col" data-i18n="chargers.columns.version">Version</th>
+                                        <th scope="col" data-i18n="chargers.columns.temperature">Temperature</th>
+                                        <th scope="col" data-i18n="chargers.columns.digitalInputMode">Digital input</th>
                                     </tr>
                                 </thead>
                                 <tbody id="chargerTableBody">
                                     <tr id="chargerEmptyRow" class="empty-row">
-                                        <td colspan="12">No chargers loaded yet.</td>
+                                        <td colspan="12" data-i18n="chargers.empty">No chargers loaded yet.</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -732,38 +732,38 @@
                     <article class="card">
                         <div class="card-header">
                             <div>
-                                <p class="eyebrow">History</p>
-                                <h2 id="chargingSessionsTitle">Charging sessions</h2>
+                                <p class="eyebrow" data-i18n="sessions.history">History</p>
+                                <h2 id="chargingSessionsTitle" data-i18n="sessions.title">Charging sessions</h2>
                             </div>
                             <div class="action-row">
-                                <label class="sr-only" for="carFilter">Car</label>
+                                <label class="sr-only" for="carFilter" data-i18n="sessions.filterCar">Car</label>
                                 <select id="carFilter" name="carFilter">
-                                    <option value="">All cars</option>
+                                    <option value="" data-i18n="sessions.allCars">All cars</option>
                                 </select>
-                                <label class="sr-only" for="sessionStartFilter">Start date</label>
+                                <label class="sr-only" for="sessionStartFilter" data-i18n="sessions.filterStartDate">Start date</label>
                                 <input type="date" id="sessionStartFilter" name="sessionStartFilter">
-                                <label class="sr-only" for="sessionEndFilter">End date</label>
+                                <label class="sr-only" for="sessionEndFilter" data-i18n="sessions.filterEndDate">End date</label>
                                 <input type="date" id="sessionEndFilter" name="sessionEndFilter">
-                                <button type="button" id="fetchSessionsButton" class="primary">Fetch sessions</button>
-                                <button type="button" id="downloadSessionsButton">Download CSV</button>
+                                <button type="button" id="fetchSessionsButton" class="primary" data-i18n="sessions.fetch">Fetch sessions</button>
+                                <button type="button" id="downloadSessionsButton" data-i18n="sessions.downloadCsv">Download CSV</button>
                             </div>
                         </div>
-                        <p class="helper-text">Optionally filter charging sessions by car and time range before downloading.</p>
+                        <p class="helper-text" data-i18n="sessions.helper">Optionally filter charging sessions by car and time range before downloading.</p>
                         <div class="table-wrapper">
                             <table class="data-table sessions-table">
                                 <thead>
                                     <tr>
-                                        <th scope="col">Name</th>
-                                        <th scope="col">Charger</th>
-                                        <th scope="col">Car</th>
-                                        <th scope="col">Start</th>
-                                        <th scope="col">End</th>
-                                        <th scope="col">Energy (kWh)</th>
+                                        <th scope="col" data-i18n="sessions.columns.name">Name</th>
+                                        <th scope="col" data-i18n="sessions.columns.charger">Charger</th>
+                                        <th scope="col" data-i18n="sessions.columns.car">Car</th>
+                                        <th scope="col" data-i18n="sessions.columns.start">Start</th>
+                                        <th scope="col" data-i18n="sessions.columns.end">End</th>
+                                        <th scope="col" data-i18n="sessions.columns.energy">Energy (kWh)</th>
                                     </tr>
                                 </thead>
                                 <tbody id="chargingSessionsTableBody">
                                     <tr id="chargingSessionsEmptyRow" class="empty-row">
-                                        <td colspan="6">No charging sessions fetched yet.</td>
+                                        <td colspan="6" data-i18n="sessions.emptyFetched">No charging sessions fetched yet.</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -775,18 +775,18 @@
                     <article class="card">
                         <div class="card-header">
                             <div>
-                                <p class="eyebrow">Guides</p>
-                                <h2 id="helpTitle">API Contract</h2>
+                                <p class="eyebrow" data-i18n="help.guides">Guides</p>
+                                <h2 id="helpTitle" data-i18n="help.title">API Contract</h2>
                             </div>
-                            <p class="helper-text">Use <code>app.sendAction(action, payload)</code> after authenticating.</p>
+                            <p class="helper-text" data-i18n="help.helper" data-i18n-mode="html">Use <code>app.sendAction(action, payload)</code> after authenticating.</p>
                         </div>
                         <div class="grid-two-column">
                             <div>
-                                <h3>Request template</h3>
+                                <h3 data-i18n="help.requestTemplate">Request template</h3>
                                 <pre id="requestTemplate"></pre>
                             </div>
                             <div>
-                                <h3>Responses</h3>
+                                <h3 data-i18n="help.responses">Responses</h3>
                                 <pre id="responseTemplate"></pre>
                             </div>
                         </div>
@@ -795,36 +795,36 @@
                     <article class="card" aria-live="polite">
                         <div class="card-header">
                             <div>
-                                <p class="eyebrow">Diagnostics</p>
-                                <h2>Last WebSocket message</h2>
+                                <p class="eyebrow" data-i18n="help.diagnostics">Diagnostics</p>
+                                <h2 data-i18n="help.lastMessage">Last WebSocket message</h2>
                             </div>
-                            <p class="helper-text">Sign in to reuse the stored session and inspect backend payloads.</p>
+                            <p class="helper-text" data-i18n="help.diagnosticsHelper">Sign in to reuse the stored session and inspect backend payloads.</p>
                         </div>
-                        <pre id="incomingMessage">No messages received yet.</pre>
+                        <pre id="incomingMessage" data-i18n="help.noMessagesYet">No messages received yet.</pre>
                     </article>
 
                     <article class="card">
                         <div class="card-header">
                             <div>
-                                <p class="eyebrow">Debugging</p>
-                                <h2>Charging sessions payload</h2>
+                                <p class="eyebrow" data-i18n="help.debugging">Debugging</p>
+                                <h2 data-i18n="help.sessionsPayload">Charging sessions payload</h2>
                             </div>
-                            <p class="helper-text">Raw session JSON for troubleshooting.</p>
+                            <p class="helper-text" data-i18n="help.sessionsPayloadHelper">Raw session JSON for troubleshooting.</p>
                         </div>
-                        <pre id="chargingSessionsOutput">No charging sessions fetched yet.</pre>
+                        <pre id="chargingSessionsOutput" data-i18n="sessions.emptyFetched">No charging sessions fetched yet.</pre>
                     </article>
 
                     <article class="card">
                         <div class="card-header">
                             <div>
-                                <p class="eyebrow">Reference</p>
-                                <h2>Charger table basics</h2>
+                                <p class="eyebrow" data-i18n="help.reference">Reference</p>
+                                <h2 data-i18n="help.chargerTableBasics">Charger table basics</h2>
                             </div>
                         </div>
                         <ul>
-                            <li>The dashboard keeps one row per charger ID and updates it with backend notifications.</li>
-                            <li>Columns follow the order defined by <code>EvDashEngine::packCharger</code> so new properties show up automatically.</li>
-                            <li>Branding (colours, fonts) is managed via CSS variables at the top of this file for easy overrides.</li>
+                            <li data-i18n="help.referenceBullet1">The dashboard keeps one row per charger ID and updates it with backend notifications.</li>
+                            <li data-i18n="help.referenceBullet2" data-i18n-mode="html">Columns follow the order defined by <code>EvDashEngine::packCharger</code> so new properties show up automatically.</li>
+                            <li data-i18n="help.referenceBullet3">Branding (colours, fonts) is managed via CSS variables at the top of this file for easy overrides.</li>
                         </ul>
                     </article>
                 </section>
@@ -840,34 +840,34 @@
         <div class="easter-egg-card" role="dialog" aria-modal="true" aria-labelledby="easterEggTitle">
             <div class="easter-egg-header">
                 <div>
-                    <p class="eyebrow">Hidden treat</p>
-                    <h3 id="easterEggTitle">Grid Dash</h3>
+                    <p class="eyebrow" data-i18n="easterEgg.hiddenTreat">Hidden treat</p>
+                    <h3 id="easterEggTitle" data-i18n="easterEgg.title">Grid Dash</h3>
                 </div>
-                <button type="button" id="easterEggClose" class="ghost">Close</button>
+                <button type="button" id="easterEggClose" class="ghost" data-i18n="easterEgg.close">Close</button>
             </div>
-            <p class="helper-text">Use arrow keys or WASD to drive the tiny EV and catch lightning bolts. Press Esc or close to exit.</p>
+            <p class="helper-text" data-i18n="easterEgg.instructions">Use arrow keys or WASD to drive the tiny EV and catch lightning bolts. Press Esc or close to exit.</p>
             <div class="easter-egg-meta">
                 <span id="easterEggScore">Score: 0</span>
-                <span id="easterEggHint">Stay inside the grid!</span>
+                <span id="easterEggHint" data-i18n="easterEgg.hint">Stay inside the grid!</span>
             </div>
-            <canvas id="easterEggCanvas" width="520" height="320" aria-label="Mini game canvas"></canvas>
+            <canvas id="easterEggCanvas" width="520" height="320" aria-label="Mini game canvas" data-i18n="easterEgg.canvasLabel" data-i18n-attr="aria-label"></canvas>
         </div>
     </div>
 
     <section id="loginOverlay" class="login-view" aria-labelledby="loginTitle">
         <div class="login-panel">
-            <h2 id="loginTitle">Sign in</h2>
-            <p>Authorization required.</p>
+            <h2 id="loginTitle" data-i18n="login.title">Sign in</h2>
+            <p data-i18n="login.required">Authorization required.</p>
             <div id="loginError" class="error-message hidden" role="alert"></div>
             <form id="loginForm" autocomplete="on">
-                <label for="username">Username
+                <label for="username"><span data-i18n="login.username">Username</span>
                     <input type="text" id="username" name="username" autocomplete="username" required placeholder="user">
                 </label>
-                <label for="password">Password
+                <label for="password"><span data-i18n="login.password">Password</span>
                     <input type="password" id="password" name="password" autocomplete="current-password" required placeholder="••••••••">
                 </label>
-                <p class="helper-text">Contact the administrator to receive valid credentials.</p>
-                <button type="submit" id="loginButton" class="primary">Sign in</button>
+                <p class="helper-text" data-i18n="login.helper">Contact the administrator to receive valid credentials.</p>
+                <button type="submit" id="loginButton" class="primary" data-i18n="login.signIn">Sign in</button>
             </form>
         </div>
     </section>

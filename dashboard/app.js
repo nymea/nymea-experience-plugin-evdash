@@ -1,5 +1,8 @@
 class DashboardApp {
     constructor() {
+        this.locale = this.resolveLocale();
+        this.translations = this.buildTranslations();
+
         this.elements = {
             loginOverlay: document.getElementById('loginOverlay'),
             loginForm: document.getElementById('loginForm'),
@@ -72,12 +75,359 @@ class DashboardApp {
             { key: 'digitalInputMode', label: 'Digital input' }
         ];
 
+        this.translateDocument();
+        this.updateEasterEggScore();
         this.renderStaticTemplates();
         this.attachEventListeners();
         this.initializePanelNavigation();
         this.restoreSession();
         this.toggleChargerEmptyState();
         this.updateCarSelector();
+    }
+
+    resolveLocale() {
+        const overrideKey = 'evdash.language';
+        try {
+            const stored = window.localStorage.getItem(overrideKey);
+            if (stored && typeof stored === 'string')
+                return stored.trim().toLowerCase().startsWith('de') ? 'de' : 'en';
+        } catch (error) {
+            // ignore
+        }
+
+        const candidates = Array.isArray(navigator.languages) && navigator.languages.length
+            ? navigator.languages
+            : [navigator.language || 'en'];
+
+        const normalized = candidates
+            .filter(Boolean)
+            .map(value => String(value).toLowerCase());
+
+        if (normalized.some(value => value === 'de' || value.startsWith('de-')))
+            return 'de';
+
+        return 'en';
+    }
+
+    buildTranslations() {
+        return {
+            en: {
+                'header.tagline': 'Monitor & troubleshoot EV chargers.',
+                'header.awaitingLogin': 'Awaiting login…',
+                'header.authenticateHint': 'Load the dashboard to authenticate.',
+                'header.logout': 'Logout',
+
+                'sidebar.dashboardSections': 'Dashboard sections',
+                'sidebar.sections': 'Sections',
+                'sidebar.workspace': 'Workspace',
+                'sidebar.overview': 'Overview',
+                'sidebar.chargers': 'Chargers',
+                'sidebar.chargersSubtitle': 'Live table & telemetry',
+                'sidebar.sessions': 'Charging sessions',
+                'sidebar.sessionsSubtitle': 'History of charging sessions',
+                'sidebar.help': 'Help',
+                'sidebar.helpSubtitle': 'API concept & debug logs',
+                'sidebar.version': 'Version',
+
+                'chargers.liveOverview': 'Live overview',
+                'chargers.title': 'Chargers',
+                'chargers.empty': 'No chargers loaded yet.',
+                'chargers.columns.name': 'Name',
+                'chargers.columns.car': 'Car',
+                'chargers.columns.energyManagerMode': 'Energy manager mode',
+                'chargers.columns.connected': 'Connected',
+                'chargers.columns.status': 'Status',
+                'chargers.columns.chargingCurrent': 'Charging current',
+                'chargers.columns.chargingPhases': 'Charging phases',
+                'chargers.columns.currentPower': 'Current power',
+                'chargers.columns.sessionEnergy': 'Session energy',
+                'chargers.columns.version': 'Version',
+                'chargers.columns.temperature': 'Temperature',
+                'chargers.columns.digitalInputMode': 'Digital input',
+
+                'sessions.history': 'History',
+                'sessions.title': 'Charging sessions',
+                'sessions.filterCar': 'Car',
+                'sessions.allCars': 'All cars',
+                'sessions.filterStartDate': 'Start date',
+                'sessions.filterEndDate': 'End date',
+                'sessions.fetch': 'Fetch sessions',
+                'sessions.downloadCsv': 'Download CSV',
+                'sessions.helper': 'Optionally filter charging sessions by car and time range before downloading.',
+                'sessions.columns.name': 'Name',
+                'sessions.columns.charger': 'Charger',
+                'sessions.columns.car': 'Car',
+                'sessions.columns.start': 'Start',
+                'sessions.columns.end': 'End',
+                'sessions.columns.energy': 'Energy (kWh)',
+                'sessions.emptyFetched': 'No charging sessions fetched yet.',
+                'sessions.noneFound': 'No charging sessions found.',
+                'sessions.noneInRange': 'No charging sessions match the selected time range.',
+                'sessions.fetchFailed': 'Failed to fetch charging sessions.',
+                'sessions.requestFailed': 'Unable to request charging sessions. Check the connection status.',
+                'sessions.displayFailed': 'Unable to display charging sessions.',
+                'sessions.startBeforeEnd': 'Start date must be earlier than end date.',
+                'sessions.sessionIdLabel': 'Session {id}',
+
+                'help.guides': 'Guides',
+                'help.title': 'API Contract',
+                'help.helper': 'Use <code>app.sendAction(action, payload)</code> after authenticating.',
+                'help.requestTemplate': 'Request template',
+                'help.responses': 'Responses',
+                'help.diagnostics': 'Diagnostics',
+                'help.lastMessage': 'Last WebSocket message',
+                'help.diagnosticsHelper': 'Sign in to reuse the stored session and inspect backend payloads.',
+                'help.noMessagesYet': 'No messages received yet.',
+                'help.debugging': 'Debugging',
+                'help.sessionsPayload': 'Charging sessions payload',
+                'help.sessionsPayloadHelper': 'Raw session JSON for troubleshooting.',
+                'help.reference': 'Reference',
+                'help.chargerTableBasics': 'Charger table basics',
+                'help.referenceBullet1': 'The dashboard keeps one row per charger ID and updates it with backend notifications.',
+                'help.referenceBullet2': 'Columns follow the order defined by <code>EvDashEngine::packCharger</code> so new properties show up automatically.',
+                'help.referenceBullet3': 'Branding (colours, fonts) is managed via CSS variables at the top of this file for easy overrides.',
+
+                'easterEgg.hiddenTreat': 'Hidden treat',
+                'easterEgg.title': 'Grid Dash',
+                'easterEgg.close': 'Close',
+                'easterEgg.instructions': 'Use arrow keys or WASD to drive the tiny EV and catch lightning bolts. Press Esc or close to exit.',
+                'easterEgg.score': 'Score: {score}',
+                'easterEgg.hint': 'Stay inside the grid!',
+                'easterEgg.canvasLabel': 'Mini game canvas',
+
+                'login.title': 'Sign in',
+                'login.required': 'Authorization required.',
+                'login.username': 'Username',
+                'login.password': 'Password',
+                'login.helper': 'Contact the administrator to receive valid credentials.',
+                'login.signIn': 'Sign in',
+                'login.signingIn': 'Signing in…',
+                'login.emptyCredentials': 'Username and password are required.',
+                'login.failed': 'Login failed. Please try again.',
+                'login.networkError': 'Unable to reach the login endpoint. Please check your connection.',
+                'login.unexpectedResponse': 'Received an unexpected response from the server.',
+                'login.invalidResponse': 'Invalid response from server.',
+                'login.invalidRequest': 'The login request was malformed. Please reload the page and try again.',
+                'login.unauthorized': 'The provided credentials were not accepted.',
+
+                'connection.connecting': 'Connecting…',
+                'connection.authenticating': 'Authenticating…',
+                'connection.connected': 'Connected',
+                'connection.disconnected': 'Disconnected',
+                'connection.error': 'Connection error',
+                'connection.authenticationRequired': 'Authentication required',
+                'connection.loggedOut': 'Logged out',
+                'connection.sessionExpired': 'Session expired. Please sign in again.',
+                'connection.sessionExpiredRestore': 'Your session has expired. Please sign in again.',
+                'connection.restoreFailed': 'We could not restore your previous session. Please sign in again.',
+                'connection.loggedOutOverlay': 'You have been logged out.',
+                'connection.authFailed': 'Authentication failed. Please try again.',
+
+                'value.true': 'True',
+                'value.false': 'False',
+                'value.yes': 'Yes',
+                'value.no': 'No',
+                'value.unknownWithValue': 'Unknown ({value})',
+
+                'energyManagerMode.quick': 'Quick',
+                'energyManagerMode.eco': 'Eco',
+                'energyManagerMode.ecoTime': 'Eco + Time',
+
+                'digitalInputMode.chargingAllowed': 'Charging allowed',
+                'digitalInputMode.chargingAllowedInverted': 'Charging allowed inverted',
+                'digitalInputMode.pwmAndS0': 'PWM and S0 signaling',
+                'digitalInputMode.limitAndS0': 'Limit and S0 signaling',
+
+                'csv.sessionId': 'Session ID',
+                'csv.chargerName': 'Charger name',
+                'csv.chargerSerialNumber': 'Charger serial number',
+                'csv.car': 'Car',
+                'csv.start': 'Start',
+                'csv.end': 'End',
+                'csv.energyKwh': 'Energy [kWh]',
+                'csv.meterStartKwh': 'Meter start [kWh]',
+                'csv.meterEndKwh': 'Meter end [kWh]',
+
+                'ws.parseFailed': 'Failed to parse message: {error}'
+            },
+            de: {
+                'header.tagline': 'Überwachen & Fehleranalyse von EV-Ladestationen.',
+                'header.awaitingLogin': 'Warte auf Anmeldung…',
+                'header.authenticateHint': 'Dashboard laden, um dich zu authentifizieren.',
+                'header.logout': 'Abmelden',
+
+                'sidebar.dashboardSections': 'Dashboard-Bereiche',
+                'sidebar.sections': 'Bereiche',
+                'sidebar.workspace': 'Arbeitsbereich',
+                'sidebar.overview': 'Übersicht',
+                'sidebar.chargers': 'Ladestationen',
+                'sidebar.chargersSubtitle': 'Live-Tabelle & Telemetrie',
+                'sidebar.sessions': 'Ladevorgänge',
+                'sidebar.sessionsSubtitle': 'Historie der Ladevorgänge',
+                'sidebar.help': 'Hilfe',
+                'sidebar.helpSubtitle': 'API-Konzept & Debug-Logs',
+                'sidebar.version': 'Version',
+
+                'chargers.liveOverview': 'Live-Übersicht',
+                'chargers.title': 'Ladestationen',
+                'chargers.empty': 'Noch keine Ladestationen geladen.',
+                'chargers.columns.name': 'Name',
+                'chargers.columns.car': 'Fahrzeug',
+                'chargers.columns.energyManagerMode': 'Energiemanager-Modus',
+                'chargers.columns.connected': 'Verbunden',
+                'chargers.columns.status': 'Status',
+                'chargers.columns.chargingCurrent': 'Ladestrom',
+                'chargers.columns.chargingPhases': 'Ladephasen',
+                'chargers.columns.currentPower': 'Aktuelle Leistung',
+                'chargers.columns.sessionEnergy': 'Energie (Sitzung)',
+                'chargers.columns.version': 'Version',
+                'chargers.columns.temperature': 'Temperatur',
+                'chargers.columns.digitalInputMode': 'Digitaler Eingang',
+
+                'sessions.history': 'Historie',
+                'sessions.title': 'Ladevorgänge',
+                'sessions.filterCar': 'Fahrzeug',
+                'sessions.allCars': 'Alle Fahrzeuge',
+                'sessions.filterStartDate': 'Startdatum',
+                'sessions.filterEndDate': 'Enddatum',
+                'sessions.fetch': 'Ladevorgänge laden',
+                'sessions.downloadCsv': 'CSV herunterladen',
+                'sessions.helper': 'Optional nach Fahrzeug und Zeitraum filtern, bevor du die CSV herunterlädst.',
+                'sessions.columns.name': 'Name',
+                'sessions.columns.charger': 'Ladestation',
+                'sessions.columns.car': 'Fahrzeug',
+                'sessions.columns.start': 'Start',
+                'sessions.columns.end': 'Ende',
+                'sessions.columns.energy': 'Energie (kWh)',
+                'sessions.emptyFetched': 'Noch keine Ladevorgänge geladen.',
+                'sessions.noneFound': 'Keine Ladevorgänge gefunden.',
+                'sessions.noneInRange': 'Keine Ladevorgänge im ausgewählten Zeitraum.',
+                'sessions.fetchFailed': 'Ladevorgänge konnten nicht geladen werden.',
+                'sessions.requestFailed': 'Ladevorgänge konnten nicht angefragt werden. Bitte Verbindungsstatus prüfen.',
+                'sessions.displayFailed': 'Ladevorgänge können nicht angezeigt werden.',
+                'sessions.startBeforeEnd': 'Das Startdatum muss vor dem Enddatum liegen.',
+                'sessions.sessionIdLabel': 'Sitzung {id}',
+
+                'help.guides': 'Leitfäden',
+                'help.title': 'API-Vertrag',
+                'help.helper': 'Nach der Authentifizierung kannst du <code>app.sendAction(action, payload)</code> verwenden.',
+                'help.requestTemplate': 'Request-Vorlage',
+                'help.responses': 'Antworten',
+                'help.diagnostics': 'Diagnose',
+                'help.lastMessage': 'Letzte WebSocket-Nachricht',
+                'help.diagnosticsHelper': 'Anmelden, um die gespeicherte Sitzung zu nutzen und Backend-Payloads zu prüfen.',
+                'help.noMessagesYet': 'Noch keine Nachrichten empfangen.',
+                'help.debugging': 'Debugging',
+                'help.sessionsPayload': 'Ladevorgänge-Payload',
+                'help.sessionsPayloadHelper': 'Rohes Session-JSON zur Fehlersuche.',
+                'help.reference': 'Referenz',
+                'help.chargerTableBasics': 'Grundlagen der Ladestationen-Tabelle',
+                'help.referenceBullet1': 'Das Dashboard hält eine Zeile pro Ladestations-ID und aktualisiert sie über Backend-Benachrichtigungen.',
+                'help.referenceBullet2': 'Die Spalten folgen der Reihenfolge aus <code>EvDashEngine::packCharger</code>, sodass neue Eigenschaften automatisch erscheinen.',
+                'help.referenceBullet3': 'Branding (Farben, Schrift) wird über CSS-Variablen am Anfang dieser Datei gesteuert.',
+
+                'easterEgg.hiddenTreat': 'Verstecktes Extra',
+                'easterEgg.title': 'Grid Dash',
+                'easterEgg.close': 'Schließen',
+                'easterEgg.instructions': 'Mit Pfeiltasten oder WASD fahren, Blitze einsammeln. Mit Esc oder Schließen beenden.',
+                'easterEgg.score': 'Punkte: {score}',
+                'easterEgg.hint': 'Bleib im Raster!',
+                'easterEgg.canvasLabel': 'Mini-Spiel-Leinwand',
+
+                'login.title': 'Anmelden',
+                'login.required': 'Autorisierung erforderlich.',
+                'login.username': 'Benutzername',
+                'login.password': 'Passwort',
+                'login.helper': 'Wende dich an den Administrator, um gültige Zugangsdaten zu erhalten.',
+                'login.signIn': 'Anmelden',
+                'login.signingIn': 'Anmeldung…',
+                'login.emptyCredentials': 'Benutzername und Passwort sind erforderlich.',
+                'login.failed': 'Anmeldung fehlgeschlagen. Bitte erneut versuchen.',
+                'login.networkError': 'Login-Endpunkt nicht erreichbar. Bitte Verbindung prüfen.',
+                'login.unexpectedResponse': 'Unerwartete Antwort vom Server erhalten.',
+                'login.invalidResponse': 'Ungültige Serverantwort.',
+                'login.invalidRequest': 'Die Login-Anfrage war fehlerhaft. Bitte Seite neu laden und erneut versuchen.',
+                'login.unauthorized': 'Die eingegebenen Zugangsdaten wurden nicht akzeptiert.',
+
+                'connection.connecting': 'Verbinden…',
+                'connection.authenticating': 'Authentifizierung…',
+                'connection.connected': 'Verbunden',
+                'connection.disconnected': 'Getrennt',
+                'connection.error': 'Verbindungsfehler',
+                'connection.authenticationRequired': 'Authentifizierung erforderlich',
+                'connection.loggedOut': 'Abgemeldet',
+                'connection.sessionExpired': 'Sitzung abgelaufen. Bitte erneut anmelden.',
+                'connection.sessionExpiredRestore': 'Deine Sitzung ist abgelaufen. Bitte erneut anmelden.',
+                'connection.restoreFailed': 'Die vorige Sitzung konnte nicht wiederhergestellt werden. Bitte erneut anmelden.',
+                'connection.loggedOutOverlay': 'Du wurdest abgemeldet.',
+                'connection.authFailed': 'Authentifizierung fehlgeschlagen. Bitte erneut versuchen.',
+
+                'value.true': 'Wahr',
+                'value.false': 'Falsch',
+                'value.yes': 'Ja',
+                'value.no': 'Nein',
+                'value.unknownWithValue': 'Unbekannt ({value})',
+
+                'energyManagerMode.quick': 'Schnell',
+                'energyManagerMode.eco': 'Eco',
+                'energyManagerMode.ecoTime': 'Eco + Zeit',
+
+                'digitalInputMode.chargingAllowed': 'Laden erlaubt',
+                'digitalInputMode.chargingAllowedInverted': 'Laden erlaubt (invertiert)',
+                'digitalInputMode.pwmAndS0': 'PWM- und S0-Signalisierung',
+                'digitalInputMode.limitAndS0': 'Limit- und S0-Signalisierung',
+
+                'csv.sessionId': 'Sitzungs-ID',
+                'csv.chargerName': 'Ladestationsname',
+                'csv.chargerSerialNumber': 'Seriennummer der Ladestation',
+                'csv.car': 'Fahrzeug',
+                'csv.start': 'Start',
+                'csv.end': 'Ende',
+                'csv.energyKwh': 'Energie [kWh]',
+                'csv.meterStartKwh': 'Zählerstand Start [kWh]',
+                'csv.meterEndKwh': 'Zählerstand Ende [kWh]',
+
+                'ws.parseFailed': 'Nachricht konnte nicht gelesen werden: {error}'
+            }
+        };
+    }
+
+    t(key, variables) {
+        const locale = this.locale in this.translations ? this.locale : 'en';
+        const table = this.translations[locale] || {};
+        const fallback = this.translations.en || {};
+        let text = (key && key in table) ? table[key] : (key in fallback ? fallback[key] : String(key));
+
+        if (variables && typeof variables === 'object') {
+            Object.entries(variables).forEach(([name, value]) => {
+                text = text.replaceAll(`{${name}}`, value === undefined || value === null ? '' : String(value));
+            });
+        }
+
+        return text;
+    }
+
+    translateDocument() {
+        try {
+            document.documentElement.lang = this.locale;
+        } catch (error) {
+            // ignore
+        }
+
+        const nodes = document.querySelectorAll('[data-i18n]');
+        nodes.forEach(node => {
+            const key = node.dataset.i18n;
+            if (!key)
+                return;
+            const attr = node.dataset.i18nAttr;
+            const text = this.t(key);
+            if (attr)
+                node.setAttribute(attr, text);
+            else if (node.dataset.i18nMode === 'html')
+                node.innerHTML = text;
+            else
+                node.textContent = text;
+        });
     }
 
     attachEventListeners() {
@@ -292,7 +642,7 @@ class DashboardApp {
             const expiresAt = new Date(parsed.expiresAt);
             if (Number.isNaN(expiresAt.getTime()) || expiresAt <= new Date()) {
                 this.clearSession();
-                this.showLoginOverlay('Your session has expired. Please sign in again.');
+                this.showLoginOverlay(this.t('connection.sessionExpiredRestore'));
                 return;
             }
 
@@ -300,13 +650,13 @@ class DashboardApp {
             this.tokenExpiry = expiresAt;
             this.username = parsed.username || null;
             this.scheduleTokenRefresh();
-        this.updateSessionUser();
-        this.hideLoginOverlay();
-        this.connectWebSocket();
+            this.updateSessionUser();
+            this.hideLoginOverlay();
+            this.connectWebSocket();
         } catch (error) {
             console.warn('Failed to restore session', error);
             this.clearSession();
-            this.showLoginOverlay('We could not restore your previous session. Please sign in again.');
+            this.showLoginOverlay(this.t('connection.restoreFailed'));
         }
     }
 
@@ -318,7 +668,7 @@ class DashboardApp {
         const password = this.elements.password.value;
 
         if (!username || !password) {
-            this.showLoginError('Username and password are required.');
+            this.showLoginError(this.t('login.emptyCredentials'));
             return;
         }
 
@@ -331,7 +681,7 @@ class DashboardApp {
                 this.connectWebSocket(true);
             })
             .catch(error => {
-                const message = error && error.message ? error.message : 'Login failed. Please try again.';
+                const message = error && error.message ? error.message : this.t('login.failed');
                 this.showLoginError(message);
             })
             .finally(() => {
@@ -353,7 +703,7 @@ class DashboardApp {
             });
         } catch (networkError) {
             console.warn('Login request failed', networkError);
-            throw new Error('Unable to reach the login endpoint. Please check your connection.');
+            throw new Error(this.t('login.networkError'));
         }
 
         let data;
@@ -361,7 +711,7 @@ class DashboardApp {
             data = await response.json();
         } catch (parseError) {
             console.warn('Failed to parse login response', parseError);
-            throw new Error('Received an unexpected response from the server.');
+            throw new Error(this.t('login.unexpectedResponse'));
         }
 
         if (!response.ok || !data.success) {
@@ -370,7 +720,7 @@ class DashboardApp {
         }
 
         if (!data.token || !data.expiresAt)
-            throw new Error('Invalid response from server.');
+            throw new Error(this.t('login.invalidResponse'));
 
         return {
             token: data.token,
@@ -381,11 +731,11 @@ class DashboardApp {
     describeLoginError(code) {
         switch (code) {
         case 'invalidRequest':
-            return 'The login request was malformed. Please reload the page and try again.';
+            return this.t('login.invalidRequest');
         case 'unauthorized':
-            return 'The provided credentials were not accepted.';
+            return this.t('login.unauthorized');
         default:
-            return 'Login failed. Please try again.';
+            return this.t('login.failed');
         }
     }
 
@@ -421,7 +771,7 @@ class DashboardApp {
         this.cars.clear();
         this.resetChargerTable();
         this.updateCarSelector();
-        this.renderChargingSessions([], 'No charging sessions fetched yet.');
+        this.renderChargingSessions([], this.t('sessions.emptyFetched'));
 
         try {
             window.localStorage.removeItem(this.sessionKey);
@@ -434,13 +784,13 @@ class DashboardApp {
 
     connectWebSocket(resetPending = false) {
         if (!this.token) {
-            this.updateConnectionStatus('Awaiting login…', 'connecting');
+            this.updateConnectionStatus(this.t('header.awaitingLogin'), 'connecting');
             return;
         }
 
         if (this.tokenExpiry && this.tokenExpiry <= new Date()) {
             this.clearSession();
-            this.showLoginOverlay('Your session has expired. Please sign in again.');
+            this.showLoginOverlay(this.t('connection.sessionExpiredRestore'));
             return;
         }
 
@@ -451,7 +801,7 @@ class DashboardApp {
             this.pendingRequests.clear();
 
         clearTimeout(this.reconnectTimer);
-        this.updateConnectionStatus('Connecting…', 'connecting');
+        this.updateConnectionStatus(this.t('connection.connecting'), 'connecting');
         const protocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
         const host = window.location.hostname || 'localhost';
         const port = 4449;
@@ -460,7 +810,7 @@ class DashboardApp {
 
         this.socket = new WebSocket(url);
         this.socket.addEventListener('open', () => {
-            this.updateConnectionStatus('Authenticating…', 'authenticating');
+            this.updateConnectionStatus(this.t('connection.authenticating'), 'authenticating');
             this.sendAuthenticate();
         });
 
@@ -469,7 +819,7 @@ class DashboardApp {
         });
 
         this.socket.addEventListener('error', () => {
-            this.updateConnectionStatus('Connection error', 'error');
+            this.updateConnectionStatus(this.t('connection.error'), 'error');
         });
 
         this.socket.addEventListener('close', () => {
@@ -558,12 +908,12 @@ class DashboardApp {
             if (data.success) {
                 const payload = data && data.payload ? data.payload : {};
                 const sessions = Array.isArray(payload.sessions) ? payload.sessions : [];
-                this.renderChargingSessions(sessions, 'No charging sessions found.');
+                this.renderChargingSessions(sessions, this.t('sessions.noneFound'));
             } else if (data.error === 'unauthenticated') {
                 this.onAuthenticationFailed('unauthenticated');
             } else {
                 console.warn('GetChargingSessions request failed', data.error || 'unknownError');
-                this.renderChargingSessions([], 'Failed to fetch charging sessions.');
+                this.renderChargingSessions([], this.t('sessions.fetchFailed'));
             }
             return true;
         }
@@ -641,7 +991,7 @@ class DashboardApp {
     }
 
     onAuthenticationSucceeded() {
-        this.updateConnectionStatus('Connected', 'connected');
+        this.updateConnectionStatus(this.t('connection.connected'), 'connected');
         this.updateSessionUser();
         this.sendGetCars();
         this.sendGetChargers();
@@ -650,13 +1000,13 @@ class DashboardApp {
 
     onAuthenticationFailed(reason) {
         const message = reason === 'unauthenticated'
-            ? 'Your session expired. Please sign in again.'
-            : 'Authentication failed. Please try again.';
+            ? this.t('connection.sessionExpired')
+            : this.t('connection.authFailed');
 
         console.warn('Authentication failed', reason);
         this.clearSession();
         this.showLoginOverlay(message);
-        this.updateConnectionStatus('Authentication required', 'error');
+        this.updateConnectionStatus(this.t('connection.authenticationRequired'), 'error');
 
         if (this.socket && this.socket.readyState === WebSocket.OPEN)
             this.socket.close();
@@ -664,7 +1014,7 @@ class DashboardApp {
 
     onSocketClosed() {
         this.pendingRequests.clear();
-        this.updateConnectionStatus('Disconnected', 'error');
+        this.updateConnectionStatus(this.t('connection.disconnected'), 'error');
         if (!this.token) {
             this.showLoginOverlay();
             return;
@@ -729,7 +1079,7 @@ class DashboardApp {
 
         const requestId = this.sendAction('GetChargingSessions', payload);
         if (!requestId)
-            this.renderChargingSessions([], 'Unable to request charging sessions. Check the connection status.');
+            this.renderChargingSessions([], this.t('sessions.requestFailed'));
 
         return requestId;
     }
@@ -816,11 +1166,11 @@ class DashboardApp {
             const dot = document.createElement('span');
             dot.className = `value-dot ${value ? 'value-dot-true' : 'value-dot-false'}`;
             dot.setAttribute('role', 'img');
-            dot.setAttribute('aria-label', value ? 'True' : 'False');
-            dot.title = value ? 'True' : 'False';
+            dot.setAttribute('aria-label', value ? this.t('value.true') : this.t('value.false'));
+            dot.title = value ? this.t('value.true') : this.t('value.false');
             const srText = document.createElement('span');
             srText.className = 'sr-only';
-            srText.textContent = value ? 'True' : 'False';
+            srText.textContent = value ? this.t('value.true') : this.t('value.false');
             cell.appendChild(dot);
             cell.appendChild(srText);
             return;
@@ -959,7 +1309,7 @@ class DashboardApp {
 
         const defaultOption = document.createElement('option');
         defaultOption.value = '';
-        defaultOption.textContent = 'All cars';
+        defaultOption.textContent = this.t('sessions.allCars');
         select.appendChild(defaultOption);
 
         const cars = Array.from(this.cars.values())
@@ -993,25 +1343,25 @@ class DashboardApp {
 
         if (key === 'energyManagerMode') {
             const modes = {
-                0: 'Quick',
-                1: 'Eco',
-                2: 'Eco + Time'
+                0: this.t('energyManagerMode.quick'),
+                1: this.t('energyManagerMode.eco'),
+                2: this.t('energyManagerMode.ecoTime')
             };
             if (value in modes)
                 return modes[value];
-            return Number.isFinite(value) ? `Unknown (${value})` : '—';
+            return Number.isFinite(value) ? this.t('value.unknownWithValue', { value }) : '—';
         }
 
         if (key === 'digitalInputMode') {
             const modes = {
-                0: 'Charging allowed',
-                1: 'Charging allowed inverted',
-                2: 'PWM and S0 signaling',
-                3: 'Limit and S0 signaling'
+                0: this.t('digitalInputMode.chargingAllowed'),
+                1: this.t('digitalInputMode.chargingAllowedInverted'),
+                2: this.t('digitalInputMode.pwmAndS0'),
+                3: this.t('digitalInputMode.limitAndS0')
             };
             if (value in modes)
                 return modes[value];
-            return Number.isFinite(value) ? `Unknown (${value})` : '—';
+            return Number.isFinite(value) ? this.t('value.unknownWithValue', { value }) : '—';
         }
 
         if ((key === 'currentPower' || key === 'sessionEnergy') && typeof value === 'number') {
@@ -1023,7 +1373,7 @@ class DashboardApp {
         }
 
         if (typeof value === 'boolean')
-            return value ? 'Yes' : 'No';
+            return value ? this.t('value.yes') : this.t('value.no');
 
         if (typeof value === 'number')
             return this.formatNumber(value);
@@ -1049,7 +1399,7 @@ class DashboardApp {
             return;
 
         if (!normalizedSessions.length) {
-            this.elements.chargingSessionsOutput.textContent = fallbackMessage || 'No charging sessions found.';
+            this.elements.chargingSessionsOutput.textContent = fallbackMessage || this.t('sessions.noneFound');
             return;
         }
 
@@ -1057,7 +1407,7 @@ class DashboardApp {
             this.elements.chargingSessionsOutput.textContent = JSON.stringify(normalizedSessions, null, 2);
         } catch (error) {
             console.warn('Failed to render charging sessions', error);
-            this.elements.chargingSessionsOutput.textContent = 'Unable to display charging sessions.';
+            this.elements.chargingSessionsOutput.textContent = this.t('sessions.displayFailed');
         }
     }
 
@@ -1082,11 +1432,11 @@ class DashboardApp {
                 const cell = emptyRow.querySelector('td');
                 if (cell) {
                     if (!normalizedSessions.length) {
-                        cell.textContent = fallbackMessage || 'No charging sessions fetched yet.';
+                        cell.textContent = fallbackMessage || this.t('sessions.emptyFetched');
                     } else if (hasTimeRangeFilter) {
-                        cell.textContent = 'No charging sessions match the selected time range.';
+                        cell.textContent = this.t('sessions.noneInRange');
                     } else {
-                        cell.textContent = fallbackMessage || 'No charging sessions found.';
+                        cell.textContent = fallbackMessage || this.t('sessions.noneFound');
                     }
                 }
                 emptyRow.classList.remove('hidden');
@@ -1120,7 +1470,7 @@ class DashboardApp {
             this.elements.sessionEndFilter.setCustomValidity('');
 
         if (Number.isFinite(startMs) && Number.isFinite(endMs) && startMs > endMs) {
-            const message = 'Start date must be earlier than end date.';
+            const message = this.t('sessions.startBeforeEnd');
             if (this.elements.sessionStartFilter)
                 this.elements.sessionStartFilter.setCustomValidity(message);
             if (this.elements.sessionEndFilter)
@@ -1232,7 +1582,7 @@ class DashboardApp {
             return session.property;
 
         if (session.sessionId)
-            return `Session ${session.sessionId}`;
+            return this.t('sessions.sessionIdLabel', { id: session.sessionId });
 
         return '—';
     }
@@ -1314,15 +1664,15 @@ class DashboardApp {
             return '';
 
         const columns = [
-            { label: 'Session ID', key: 'sessionId' },
-            { label: 'Charger name', key: 'chargerName' },
-            { label: 'Charger serial number', key: 'chargerSerialNumber' },
-            { label: 'Car', key: 'carName' },
-            { label: 'Start', key: 'startTimestamp', formatter: value => this.formatCsvTimestamp(value) },
-            { label: 'End', key: 'endTimestamp', formatter: value => this.formatCsvTimestamp(value) },
-            { label: 'Energy [kWh]', key: 'sessionEnergy' },
-            { label: 'Meter start [kWh]', key: 'energyStart' },
-            { label: 'Meter end [kWh]', key: 'energyEnd' }
+            { label: this.t('csv.sessionId'), key: 'sessionId' },
+            { label: this.t('csv.chargerName'), key: 'chargerName' },
+            { label: this.t('csv.chargerSerialNumber'), key: 'chargerSerialNumber' },
+            { label: this.t('csv.car'), key: 'carName' },
+            { label: this.t('csv.start'), key: 'startTimestamp', formatter: value => this.formatCsvTimestamp(value) },
+            { label: this.t('csv.end'), key: 'endTimestamp', formatter: value => this.formatCsvTimestamp(value) },
+            { label: this.t('csv.energyKwh'), key: 'sessionEnergy' },
+            { label: this.t('csv.meterStartKwh'), key: 'energyStart' },
+            { label: this.t('csv.meterEndKwh'), key: 'energyEnd' }
         ];
 
         const lines = [];
@@ -1657,7 +2007,7 @@ class DashboardApp {
     updateEasterEggScore() {
         if (!this.elements.easterEggScore)
             return;
-        this.elements.easterEggScore.textContent = `Score: ${this.easterEggGame.score}`;
+        this.elements.easterEggScore.textContent = this.t('easterEgg.score', { score: this.easterEggGame.score });
     }
 
     sanitizeFilename(value) {
@@ -1692,8 +2042,8 @@ class DashboardApp {
             return;
 
         const defaultLabel = document.body && document.body.dataset.mode === 'help'
-            ? 'Load the dashboard to authenticate.'
-            : 'Awaiting login…';
+            ? this.t('header.authenticateHint')
+            : this.t('header.awaitingLogin');
 
         if (!this.token || !this.username) {
             this.elements.sessionUsername.textContent = defaultLabel;
@@ -1743,7 +2093,7 @@ class DashboardApp {
         if (!this.elements.loginButton)
             return;
         this.elements.loginButton.disabled = loading;
-        this.elements.loginButton.textContent = loading ? 'Signing in…' : 'Sign in';
+        this.elements.loginButton.textContent = loading ? this.t('login.signingIn') : this.t('login.signIn');
     }
 
     generateRequestId() {
@@ -1770,9 +2120,9 @@ class DashboardApp {
         this.clearSession();
         if (this.socket && this.socket.readyState === WebSocket.OPEN)
             this.socket.close();
-        this.updateConnectionStatus('Logged out', 'connecting');
+        this.updateConnectionStatus(this.t('connection.loggedOut'), 'connecting');
         this.updateSessionUser();
-        this.showLoginOverlay('You have been logged out.');
+        this.showLoginOverlay(this.t('connection.loggedOutOverlay'));
     }
 
     scheduleTokenRefresh() {
@@ -1812,7 +2162,7 @@ class DashboardApp {
                 throw new Error(data && data.error ? data.error : 'refreshFailed');
 
             if (!data.token || !data.expiresAt)
-                throw new Error('Invalid response from server.');
+                throw new Error(this.t('login.invalidResponse'));
 
             this.persistSession({
                 token: data.token,
@@ -1823,10 +2173,10 @@ class DashboardApp {
         } catch (error) {
             console.warn('Token refresh failed', error);
             this.clearSession();
-            this.updateConnectionStatus('Authentication required', 'error');
+            this.updateConnectionStatus(this.t('connection.authenticationRequired'), 'error');
             if (this.socket && this.socket.readyState === WebSocket.OPEN)
                 this.socket.close();
-            this.showLoginOverlay('Session expired. Please sign in again.');
+            this.showLoginOverlay(this.t('connection.sessionExpired'));
         } finally {
             this.refreshInFlight = false;
         }
