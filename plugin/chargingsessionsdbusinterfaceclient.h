@@ -45,7 +45,7 @@ public:
     QList<QVariantMap> sessions() const;
 
 public slots:
-    void getSessions(const QStringList &carThingIds = QStringList());
+    void getSessions(const QStringList &carThingIds = QStringList(), qlonglong startTimestamp = 0, qlonglong endTimestamp = 0);
 
 signals:
     void sessionsReceived(const QList<QVariantMap> &sessions);

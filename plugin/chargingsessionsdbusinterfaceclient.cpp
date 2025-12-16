@@ -65,14 +65,14 @@ QList<QVariantMap> ChargingSessionsDBusInterfaceClient::sessions() const
     return m_sessions;
 }
 
-void ChargingSessionsDBusInterfaceClient::getSessions(const QStringList &carThingIds)
+void ChargingSessionsDBusInterfaceClient::getSessions(const QStringList &carThingIds, qlonglong startTimestamp, qlonglong endTimestamp)
 {
     if (!ensureInterface()) {
         emit errorOccurred(QStringLiteral("Charging sessions DBus interface is not available"));
         return;
     }
 
-    QDBusPendingCall call = m_interface->asyncCall(QStringLiteral("GetSessions"), carThingIds);
+    QDBusPendingCall call = m_interface->asyncCall(QStringLiteral("GetSessions"), carThingIds, startTimestamp, endTimestamp);
     QDBusPendingCallWatcher *watcher = new QDBusPendingCallWatcher(call, this);
     connect(watcher, &QDBusPendingCallWatcher::finished, this, &ChargingSessionsDBusInterfaceClient::onCallFinished);
 }
