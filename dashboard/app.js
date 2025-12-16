@@ -64,11 +64,11 @@ class DashboardApp {
             { key: 'connected', label: 'Connected' },
             { key: 'status', label: 'Status' },
             { key: 'chargingCurrent', label: 'Charging current' },
-            { key: 'currentPower', label: 'Current power' },
-            { key: 'version', label: 'Version' },
-            { key: 'sessionEnergy', label: 'Session energy' },
-            { key: 'temperature', label: 'Temperature' },
             { key: 'chargingPhases', label: 'Charging phases' },
+            { key: 'currentPower', label: 'Current power' },
+            { key: 'sessionEnergy', label: 'Session energy' },
+            { key: 'version', label: 'Version' },
+            { key: 'temperature', label: 'Temperature' },
             { key: 'digitalInputMode', label: 'Digital input' }
         ];
 
