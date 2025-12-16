@@ -98,6 +98,14 @@ class DashboardApp {
             });
         }
 
+        if (this.elements.carFilter) {
+            this.elements.carFilter.addEventListener('change', () => {
+                const carId = this.elements.carFilter.value;
+                if (carId)
+                    this.fetchChargingSessions();
+            });
+        }
+
         if (this.elements.downloadSessionsButton) {
             this.elements.downloadSessionsButton.addEventListener('click', () => {
                 this.downloadChargingSessionsCsv();
