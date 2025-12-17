@@ -46,6 +46,7 @@ class DashboardApp {
         this.tokenRefreshTimer = null;
         this.refreshInFlight = false;
         this.chargers = new Map();
+        this.expandedChargers = new Set();
         this.cars = new Map();
         this.sessions = [];
         this.activePanel = null;
@@ -69,10 +70,7 @@ class DashboardApp {
             { key: 'chargingCurrent', label: 'Charging current' },
             { key: 'chargingPhases', label: 'Charging phases' },
             { key: 'currentPower', label: 'Current power' },
-            { key: 'sessionEnergy', label: 'Session energy' },
-            { key: 'version', label: 'Version' },
-            { key: 'temperature', label: 'Temperature' },
-            { key: 'digitalInputMode', label: 'Digital input' }
+            { key: 'sessionEnergy', label: 'Session energy' }
         ];
 
         this.translateDocument();
@@ -144,6 +142,14 @@ class DashboardApp {
                 'chargers.columns.version': 'Version',
                 'chargers.columns.temperature': 'Temperature',
                 'chargers.columns.digitalInputMode': 'Digital input',
+                'chargerStatus.Init': 'Initializing',
+                'chargerStatus.A1': 'Charger ready',
+                'chargerStatus.A2': 'Charger ready',
+                'chargerStatus.B1': 'Car connected, autorization required',
+                'chargerStatus.B2': 'Car connected',
+                'chargerStatus.C1': 'Charging pause, car ready',
+                'chargerStatus.C2': 'Charging',
+                'chargerStatus.F': 'Error',
 
                 'sessions.history': 'History',
                 'sessions.title': 'Charging sessions',
@@ -186,6 +192,7 @@ class DashboardApp {
                 'help.referenceBullet1': 'The dashboard keeps one row per charger ID and updates it with backend notifications.',
                 'help.referenceBullet2': 'Columns follow the order defined by <code>EvDashEngine::packCharger</code> so new properties show up automatically.',
                 'help.referenceBullet3': 'Branding (colours, fonts) is managed via CSS variables at the top of this file for easy overrides.',
+                'help.referenceBullet4': 'Select a charger row to expand additional charger details.',
 
                 'easterEgg.hiddenTreat': 'Hidden treat',
                 'easterEgg.title': 'Grid Dash',
@@ -283,6 +290,14 @@ class DashboardApp {
                 'chargers.columns.version': 'Version',
                 'chargers.columns.temperature': 'Temperatur',
                 'chargers.columns.digitalInputMode': 'Digitaler Eingang',
+                'chargerStatus.Init': 'Initialisierung',
+                'chargerStatus.A1': 'Ladestation bereit',
+                'chargerStatus.A2': 'Ladestation bereit',
+                'chargerStatus.B1': 'Fahrzeug verbunden, Autorisierung erforderlich',
+                'chargerStatus.B2': 'Fahrzeug verbunden',
+                'chargerStatus.C1': 'Ladepause, Fahrzeug bereit',
+                'chargerStatus.C2': 'Laden',
+                'chargerStatus.F': 'Fehler',
 
                 'sessions.history': 'Historie',
                 'sessions.title': 'Ladevorgänge',
@@ -325,6 +340,7 @@ class DashboardApp {
                 'help.referenceBullet1': 'Das Dashboard hält eine Zeile pro Ladestations-ID und aktualisiert sie über Backend-Benachrichtigungen.',
                 'help.referenceBullet2': 'Die Spalten folgen der Reihenfolge aus <code>EvDashEngine::packCharger</code>, sodass neue Eigenschaften automatisch erscheinen.',
                 'help.referenceBullet3': 'Branding (Farben, Schrift) wird über CSS-Variablen am Anfang dieser Datei gesteuert.',
+                'help.referenceBullet4': 'Wähle eine Ladestationszeile aus, um zusätzliche Details einzublenden.',
 
                 'easterEgg.hiddenTreat': 'Verstecktes Extra',
                 'easterEgg.title': 'Grid Dash',
@@ -492,6 +508,27 @@ class DashboardApp {
             this.elements.easterEggOverlay.addEventListener('click', event => {
                 if (event.target === this.elements.easterEggOverlay)
                     this.stopEasterEggGame();
+            });
+        }
+
+        if (this.elements.chargerTableBody) {
+            this.elements.chargerTableBody.addEventListener('click', event => {
+                const targetRow = event.target ? event.target.closest('tr[data-charger-id]') : null;
+                if (!targetRow || !targetRow.dataset || !targetRow.dataset.chargerId)
+                    return;
+                this.toggleChargerDetails(targetRow.dataset.chargerId);
+            });
+
+            this.elements.chargerTableBody.addEventListener('keydown', event => {
+                if (!event || (event.key !== 'Enter' && event.key !== ' '))
+                    return;
+
+                const targetRow = event.target ? event.target.closest('tr[data-charger-id]') : null;
+                if (!targetRow || !targetRow.dataset || !targetRow.dataset.chargerId)
+                    return;
+
+                event.preventDefault();
+                this.toggleChargerDetails(targetRow.dataset.chargerId);
             });
         }
     }
@@ -1125,8 +1162,12 @@ class DashboardApp {
 
         let row = this.findChargerRow(key);
         if (!row || forceCreate) {
-            if (row && row.parentElement)
+            if (row && row.parentElement) {
+                const detailsRow = this.findChargerDetailsRow(key);
+                if (detailsRow && detailsRow.parentElement)
+                    detailsRow.parentElement.removeChild(detailsRow);
                 row.parentElement.removeChild(row);
+            }
             row = this.buildChargerRow(charger);
             this.elements.chargerTableBody.appendChild(row);
         } else {
@@ -1140,12 +1181,17 @@ class DashboardApp {
             });
         }
 
+        this.syncChargerDetailsVisibility(key);
         this.toggleChargerEmptyState();
     }
 
     buildChargerRow(charger) {
         const row = document.createElement('tr');
+        row.classList.add('charger-row');
         row.dataset.chargerId = this.getChargerKey(charger) || '';
+        row.tabIndex = 0;
+        row.setAttribute('role', 'button');
+        row.setAttribute('aria-expanded', 'false');
         this.chargerColumns.forEach(column => {
             if (column.hidden)
                 return;
@@ -1155,6 +1201,140 @@ class DashboardApp {
             row.appendChild(cell);
         });
         return row;
+    }
+
+    toggleChargerDetails(chargerId) {
+        if (!chargerId)
+            return;
+
+        const key = this.getChargerKey(chargerId);
+        if (!key)
+            return;
+
+        if (this.expandedChargers.has(key))
+            this.collapseChargerDetails(key);
+        else
+            this.expandChargerDetails(key);
+    }
+
+    expandChargerDetails(chargerId) {
+        if (!chargerId)
+            return;
+
+        const key = this.getChargerKey(chargerId);
+        if (!key)
+            return;
+
+        this.expandedChargers.add(key);
+        this.syncChargerDetailsVisibility(key);
+    }
+
+    collapseChargerDetails(chargerId) {
+        if (!chargerId)
+            return;
+
+        const key = this.getChargerKey(chargerId);
+        if (!key)
+            return;
+
+        this.expandedChargers.delete(key);
+        this.syncChargerDetailsVisibility(key);
+    }
+
+    syncChargerDetailsVisibility(chargerId) {
+        if (!chargerId || !this.elements.chargerTableBody)
+            return;
+
+        const key = this.getChargerKey(chargerId);
+        if (!key)
+            return;
+
+        const isExpanded = this.expandedChargers.has(key);
+        const row = this.findChargerRow(key);
+        if (row) {
+            row.classList.toggle('is-expanded', isExpanded);
+            row.setAttribute('aria-expanded', isExpanded ? 'true' : 'false');
+        }
+
+        const detailsRow = this.findChargerDetailsRow(key);
+        if (!isExpanded) {
+            if (detailsRow && detailsRow.parentElement)
+                detailsRow.parentElement.removeChild(detailsRow);
+            return;
+        }
+
+        if (!row)
+            return;
+
+        const ensured = detailsRow || this.buildChargerDetailsRow(key);
+        if (ensured && ensured !== detailsRow) {
+            this.elements.chargerTableBody.insertBefore(ensured, row.nextSibling);
+        }
+
+        this.updateChargerDetailsRow(key);
+    }
+
+    buildChargerDetailsRow(chargerId) {
+        const row = document.createElement('tr');
+        row.classList.add('charger-details-row');
+        row.dataset.chargerDetailsFor = this.getChargerKey(chargerId) || '';
+
+        const cell = document.createElement('td');
+        cell.colSpan = this.getVisibleChargerColumnCount();
+        const list = document.createElement('dl');
+        list.className = 'charger-details-list';
+        cell.appendChild(list);
+        row.appendChild(cell);
+        return row;
+    }
+
+    updateChargerDetailsRow(chargerId) {
+        if (!chargerId)
+            return;
+
+        const key = this.getChargerKey(chargerId);
+        if (!key || !this.expandedChargers.has(key))
+            return;
+
+        const charger = this.chargers && this.chargers.get(key) ? this.chargers.get(key) : null;
+        const detailsRow = this.findChargerDetailsRow(key);
+        if (!detailsRow)
+            return;
+
+        const list = detailsRow.querySelector('dl.charger-details-list');
+        if (!list)
+            return;
+
+        const items = [
+            { label: this.t('chargers.columns.version'), key: 'version' },
+            { label: this.t('chargers.columns.temperature'), key: 'temperature' },
+            { label: this.t('chargers.columns.digitalInputMode'), key: 'digitalInputMode' }
+        ];
+
+        list.innerHTML = '';
+        items.forEach(item => {
+            const term = document.createElement('dt');
+            term.textContent = item.label;
+            const description = document.createElement('dd');
+            const value = charger && Object.prototype.hasOwnProperty.call(charger, item.key) ? charger[item.key] : null;
+            description.textContent = this.formatChargerValue(item.key, value);
+            list.appendChild(term);
+            list.appendChild(description);
+        });
+    }
+
+    findChargerDetailsRow(chargerId) {
+        if (!this.elements.chargerTableBody || !chargerId)
+            return null;
+
+        const normalizedId = typeof CSS !== 'undefined' && CSS.escape
+            ? CSS.escape(String(chargerId))
+            : String(chargerId).replace(/"/g, '\\"');
+        return this.elements.chargerTableBody.querySelector(`tr[data-charger-details-for="${normalizedId}"]`);
+    }
+
+    getVisibleChargerColumnCount() {
+        return this.chargerColumns.filter(column => !column.hidden).length;
     }
 
     renderCellValue(cell, key, value) {
@@ -1184,10 +1364,14 @@ class DashboardApp {
         if (!key)
             return;
 
+        this.expandedChargers.delete(key);
         this.chargers.delete(key);
         const row = this.findChargerRow(key);
+        const detailsRow = this.findChargerDetailsRow(key);
         if (row && row.parentElement)
             row.parentElement.removeChild(row);
+        if (detailsRow && detailsRow.parentElement)
+            detailsRow.parentElement.removeChild(detailsRow);
 
         this.toggleChargerEmptyState();
     }
@@ -1196,7 +1380,8 @@ class DashboardApp {
         if (!this.elements.chargerTableBody)
             return;
 
-        const rows = this.elements.chargerTableBody.querySelectorAll('tr[data-charger-id]');
+        this.expandedChargers.clear();
+        const rows = this.elements.chargerTableBody.querySelectorAll('tr[data-charger-id], tr[data-charger-details-for]');
         rows.forEach(row => {
             if (row.parentElement)
                 row.parentElement.removeChild(row);
@@ -1340,6 +1525,23 @@ class DashboardApp {
     formatChargerValue(key, value) {
         if (value === null || value === undefined || value === '')
             return '—';
+
+        if (key === 'status') {
+            const code = String(value).trim();
+            const statusKeys = {
+                Init: 'chargerStatus.Init',
+                A1: 'chargerStatus.A1',
+                A2: 'chargerStatus.A2',
+                B1: 'chargerStatus.B1',
+                B2: 'chargerStatus.B2',
+                C1: 'chargerStatus.C1',
+                C2: 'chargerStatus.C2',
+                F: 'chargerStatus.F'
+            };
+            if (code in statusKeys)
+                return `${code}: ${this.t(statusKeys[code])}`;
+            return code || '—';
+        }
 
         if (key === 'energyManagerMode') {
             const modes = {

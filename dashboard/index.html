@@ -343,6 +343,42 @@
             background: #f9fbfd;
         }
 
+        .chargers-table tbody tr[data-charger-id] {
+            cursor: pointer;
+        }
+
+        .chargers-table tbody tr[data-charger-id]:hover,
+        .chargers-table tbody tr[data-charger-id].is-expanded {
+            background: rgba(88, 97, 107, 0.08);
+        }
+
+        .charger-details-row td {
+            border-bottom: 1px solid #e4e9f2;
+            padding: 0.75rem;
+            background: rgba(88, 97, 107, 0.04);
+        }
+
+        .charger-details-list {
+            margin: 0;
+            display: grid;
+            grid-template-columns: minmax(120px, 220px) minmax(0, 1fr);
+            row-gap: 0.25rem;
+            column-gap: 1rem;
+            font-size: 0.9rem;
+            line-height: 1.35;
+        }
+
+        .charger-details-list dt {
+            font-weight: 600;
+            color: #1f2a37;
+        }
+
+        .charger-details-list dd {
+            margin: 0;
+            color: #1f2a37;
+            word-break: break-word;
+        }
+
         .data-table .empty-row td {
             text-align: center;
             font-style: italic;
@@ -713,14 +749,11 @@
                                         <th scope="col" data-i18n="chargers.columns.chargingPhases">Charging phases</th>
                                         <th scope="col" data-i18n="chargers.columns.currentPower">Current power</th>
                                         <th scope="col" data-i18n="chargers.columns.sessionEnergy">Session energy</th>
-                                        <th scope="col" data-i18n="chargers.columns.version">Version</th>
-                                        <th scope="col" data-i18n="chargers.columns.temperature">Temperature</th>
-                                        <th scope="col" data-i18n="chargers.columns.digitalInputMode">Digital input</th>
                                     </tr>
                                 </thead>
                                 <tbody id="chargerTableBody">
                                     <tr id="chargerEmptyRow" class="empty-row">
-                                        <td colspan="12" data-i18n="chargers.empty">No chargers loaded yet.</td>
+                                        <td colspan="9" data-i18n="chargers.empty">No chargers loaded yet.</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -825,6 +858,7 @@
                             <li data-i18n="help.referenceBullet1">The dashboard keeps one row per charger ID and updates it with backend notifications.</li>
                             <li data-i18n="help.referenceBullet2" data-i18n-mode="html">Columns follow the order defined by <code>EvDashEngine::packCharger</code> so new properties show up automatically.</li>
                             <li data-i18n="help.referenceBullet3">Branding (colours, fonts) is managed via CSS variables at the top of this file for easy overrides.</li>
+                            <li data-i18n="help.referenceBullet4">Select a charger row to expand additional charger details.</li>
                         </ul>
                     </article>
                 </section>
