@@ -1522,6 +1522,33 @@ class DashboardApp {
         return unit ? `${rounded} ${unit}` : String(rounded);
     }
 
+    formatNumberMaxDecimals(value, unit, decimals = 2) {
+        if (!Number.isFinite(value))
+            return '—';
+
+        const factor = 10 ** decimals;
+        const rounded = Math.round(value * factor) / factor;
+        let text = rounded.toFixed(decimals).replace(/\.?0+$/, '');
+        if (text === '-0')
+            text = '0';
+        return unit ? `${text} ${unit}` : text;
+    }
+
+    coerceFiniteNumber(value) {
+        if (typeof value === 'number')
+            return Number.isFinite(value) ? value : null;
+
+        if (typeof value !== 'string')
+            return null;
+
+        const normalized = value.trim().replace(',', '.');
+        if (!normalized)
+            return null;
+
+        const parsed = Number.parseFloat(normalized);
+        return Number.isFinite(parsed) ? parsed : null;
+    }
+
     formatChargerValue(key, value) {
         if (value === null || value === undefined || value === '')
             return '—';
@@ -1566,12 +1593,16 @@ class DashboardApp {
             return Number.isFinite(value) ? this.t('value.unknownWithValue', { value }) : '—';
         }
 
-        if ((key === 'currentPower' || key === 'sessionEnergy') && typeof value === 'number') {
+        if (key === 'currentPower' || key === 'sessionEnergy') {
+            const numericValue = this.coerceFiniteNumber(value);
+            if (numericValue === null)
+                return typeof value === 'string' ? value : '—';
+
             const unit = key === 'currentPower' ? 'kW' : 'kWh';
             if (key === 'currentPower')
-                return this.formatNumber(value / 1000, unit);
+                return numericValue >= 0 && numericValue < 50 ? `0 ${unit}` : this.formatNumberMaxDecimals(numericValue / 1000, unit, 2);
 
-            return this.formatNumber(value, unit);
+            return this.formatNumber(numericValue, unit);
         }
 
         if (typeof value === 'boolean')
