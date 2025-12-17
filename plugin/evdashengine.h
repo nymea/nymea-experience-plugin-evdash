@@ -86,10 +86,14 @@ private:
     QList<QWebSocket *> m_clients;
     QHash<QWebSocket *, QString> m_authenticatedClients;
 
-    QList<Thing *> m_chargers;
-    void monitorChargerThing(Thing *thing);
     QList<Thing *> m_cars;
+    QList<Thing *> m_chargers;
+
+    void monitorChargerThing(Thing *thing);
     void monitorCarThing(Thing *thing);
+
+    QHash<Thing *, qint64> m_chargersStatusChangedCache;
+    void verifyChargerStatusChanged(Thing *charger);
 
     // Pending requests waiting for charging sessions data to return
     QHash<QString, QPointer<QWebSocket>> m_pendingChargingSessionsRequests;

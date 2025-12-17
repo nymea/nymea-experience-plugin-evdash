@@ -196,6 +196,7 @@ void EvDashEngine::onThingAdded(Thing *thing)
         m_chargers.append(thing);
         monitorChargerThing(thing);
         sendNotification("ChargerAdded", packCharger(thing));
+        verifyChargerStatusChanged(thing);
     }
 
     if (isCarThing(thing)) {
@@ -210,8 +211,9 @@ void EvDashEngine::onThingRemoved(const ThingId &thingId)
     foreach (Thing *thing, m_chargers) {
         if (thing->id() == thingId) {
             qCDebug(dcEvDashExperience()) << "Charger has been removed.";
-            m_chargers.removeAll(thing);
             sendNotification("ChargerRemoved", packCharger(thing));
+            m_chargers.removeAll(thing);
+            m_chargersStatusChangedCache.remove(thing);
             break;
         }
     }
@@ -224,12 +226,15 @@ void EvDashEngine::onThingRemoved(const ThingId &thingId)
             break;
         }
     }
+
 }
 
 void EvDashEngine::onThingChanged(Thing *thing)
 {
-    if (isChargerThing(thing))
+    if (isChargerThing(thing)) {
         sendNotification("ChargerChanged", packCharger(thing));
+        verifyChargerStatusChanged(thing);
+    }
 
     if (isCarThing(thing))
         sendNotification("CarChanged", packCar(thing));
@@ -258,6 +263,37 @@ void EvDashEngine::monitorCarThing(Thing *thing)
         Q_UNUSED(possibleValues)
 
         onThingChanged(thing);
+    });
+}
+
+void EvDashEngine::verifyChargerStatusChanged(Thing *charger)
+{
+    QString stateName = "status";
+    QString source = QString("state-%1-%2").arg(charger->id().toString(QUuid::WithBraces), stateName);
+    LogFetchJob *job = m_logEngine->fetchLogEntries({source}, {stateName}, {}, {}, {}, Types::SampleRateAny, Qt::DescendingOrder, 0, 1);
+    connect(job, &LogFetchJob::finished, charger, [this, charger, stateName](const LogEntries &entries) {
+
+        if (entries.isEmpty()) {
+            qCDebug(dcEvDashExperience()) << "Last state change of" << charger->name() << stateName << "unknown";
+            // Forget any cached values, the database did not return any information...
+            m_chargersStatusChangedCache.remove(charger);
+            return;
+        }
+
+        qint64 lastChangeTimestamp = entries.first().timestamp().toSecsSinceEpoch();
+        qCDebug(dcEvDashExperience()) << "Last state change" << charger->name() << stateName << entries.first().timestamp().toString() << entries.first().values().first();
+
+        if (!m_chargersStatusChangedCache.contains(charger)) {
+            m_chargersStatusChangedCache.insert(charger, lastChangeTimestamp);
+            sendNotification("ChargerChanged", packCharger(charger));
+            return;
+        }
+
+        if (m_chargersStatusChangedCache.value(charger) != lastChangeTimestamp) {
+            m_chargersStatusChangedCache[charger] = lastChangeTimestamp;
+            sendNotification("ChargerChanged", packCharger(charger));
+            return;
+        }
     });
 }
 
@@ -451,7 +487,6 @@ void EvDashEngine::sendReply(QWebSocket *socket, QJsonObject response) const
 void EvDashEngine::sendNotification(const QString &notification, QJsonObject payload) const
 {
     // Send to all active clients
-
     for (QWebSocket *client : qAsConst(m_clients)) {
         if (m_authenticatedClients.value(client).isEmpty())
             continue;
@@ -521,28 +556,6 @@ QJsonObject EvDashEngine::packCharger(Thing *charger) const
     chargerObject.insert("pluggedIn", charger->stateValue("pluggedIn").toBool());
     chargerObject.insert("chargingAllowed", charger->stateValue("power").toBool());
 
-    QString stateName = "currentPower";
-    chargerObject.insert(stateName, charger->stateValue(stateName).toString());
-    QString source = QString("state-%1-%2").arg(charger->id().toString(QUuid::WithBraces), stateName);
-    LogFetchJob *job = m_logEngine->fetchLogEntries(
-        {source},
-        {stateName},
-        {}, {}, {},                       // start/end/filter
-        Types::SampleRateAny,
-        Qt::DescendingOrder,
-        0, 1                               // offset, limit
-        );
-
-    connect(job, &LogFetchJob::finished, this, [charger, stateName](const LogEntries &entries) {
-        if (entries.isEmpty()) {
-            qCDebug(dcEvDashExperience()) << "##### Last state change of" << charger->name() << stateName << "unknwon";
-            return;
-        }
-
-        //qint64 lastChangeMs = entries.first().timestamp().toMSecsSinceEpoch();
-        qCDebug(dcEvDashExperience()) << "##### Last state change" << charger->name() << stateName << entries.first().timestamp().toString() << entries.first().values().first();
-    });
-
     if (charger->hasState("currentVersion"))
         chargerObject.insert("version", charger->stateValue("currentVersion").toDouble());
 
@@ -559,10 +572,11 @@ QJsonObject EvDashEngine::packCharger(Thing *charger) const
     if (charger->hasState("error"))
         chargerObject.insert("error", charger->stateValue("error").toString());
 
-    if (charger->hasState("status")) {
+    if (charger->hasState("status"))
+        chargerObject.insert("status", charger->stateValue("status").toString());
 
-
-    }
+    if (m_chargersStatusChangedCache.contains(charger))
+        chargerObject.insert("lastStatusUpdate", m_chargersStatusChangedCache.value(charger));
 
     if (charger->hasState("digitalInputMode"))
         chargerObject.insert("digitalInputMode", charger->stateValue("digitalInputMode").toInt());
@@ -618,6 +632,7 @@ QStringList EvDashEngine::carThingIdsForCharger(const QString &chargerId) const
         const QString assignedCarId = chargingInfo.value(QStringLiteral("assignedCarId")).toString();
         if (!assignedCarId.isEmpty())
             carThingIds.append(assignedCarId);
+
         break;
     }
 
@@ -640,6 +655,7 @@ void EvDashEngine::onSessionsReceived(const QList<QVariantMap> &sessions)
         QPointer<QWebSocket> socket = m_pendingChargingSessionsRequests.take(requestId);
         if (!socket)
             continue;
+
         sendReply(socket, createSuccessResponse(requestId, payload));
     }
 
@@ -655,6 +671,7 @@ void EvDashEngine::onSessionsError(const QString &errorMessage)
         QPointer<QWebSocket> socket = m_pendingChargingSessionsRequests.take(requestId);
         if (!socket)
             continue;
+
         sendReply(socket, createErrorResponse(requestId, errorMessage));
     }
 }

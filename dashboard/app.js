@@ -135,6 +135,7 @@ class DashboardApp {
                 'chargers.columns.energyManagerMode': 'Energy manager mode',
                 'chargers.columns.connected': 'Connected',
                 'chargers.columns.status': 'Status',
+                'chargers.columns.lastStatusUpdate': 'Last status update',
                 'chargers.columns.chargingCurrent': 'Charging current',
                 'chargers.columns.chargingPhases': 'Charging phases',
                 'chargers.columns.currentPower': 'Current power',
@@ -283,6 +284,7 @@ class DashboardApp {
                 'chargers.columns.energyManagerMode': 'Energiemanager-Modus',
                 'chargers.columns.connected': 'Verbunden',
                 'chargers.columns.status': 'Status',
+                'chargers.columns.lastStatusUpdate': 'Letzte Statusaktualisierung',
                 'chargers.columns.chargingCurrent': 'Ladestrom',
                 'chargers.columns.chargingPhases': 'Ladephasen',
                 'chargers.columns.currentPower': 'Aktuelle Leistung',
@@ -1306,6 +1308,7 @@ class DashboardApp {
             return;
 
         const items = [
+            { label: this.t('chargers.columns.lastStatusUpdate'), key: 'lastStatusUpdate' },
             { label: this.t('chargers.columns.version'), key: 'version' },
             { label: this.t('chargers.columns.temperature'), key: 'temperature' },
             { label: this.t('chargers.columns.digitalInputMode'), key: 'digitalInputMode' }
@@ -1591,6 +1594,27 @@ class DashboardApp {
             if (value in modes)
                 return modes[value];
             return Number.isFinite(value) ? this.t('value.unknownWithValue', { value }) : '—';
+        }
+
+        if (key === 'lastStatusUpdate') {
+            const numeric = typeof value === 'string' ? Number.parseFloat(value) : value;
+            if (!Number.isFinite(numeric))
+                return '—';
+
+            const ms = numeric > 1e12 ? numeric : numeric * 1000;
+            const date = new Date(ms);
+            if (Number.isNaN(date.getTime()))
+                return '—';
+
+            const pad = part => String(part).padStart(2, '0');
+            const day = pad(date.getDate());
+            const month = pad(date.getMonth() + 1);
+            const year = date.getFullYear();
+            const hours = pad(date.getHours());
+            const minutes = pad(date.getMinutes());
+            const seconds = pad(date.getSeconds());
+
+            return `${day}.${month}.${year} ${hours}:${minutes}:${seconds}`;
         }
 
         if (key === 'currentPower' || key === 'sessionEnergy') {
