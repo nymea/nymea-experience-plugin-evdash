@@ -9,7 +9,7 @@ PKGCONFIG += nymea
 RESOURCES += ../dashboard.qrc
 
 QT -= gui
-QT += network sql websockets dbus
+QT += network websockets dbus
 
 HEADERS += experiencepluginevdash.h \
     energymanagerdbusclient.h \
