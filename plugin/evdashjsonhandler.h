@@ -56,7 +56,6 @@ signals:
 private:
     EvDashEngine *m_engine = nullptr;
     EvDashWebServerResource *m_resource = nullptr;
-
 };
 
 #endif // ENERGYJSONHANDLER_H

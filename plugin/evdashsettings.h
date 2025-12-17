@@ -32,7 +32,6 @@ class EvDashSettings : public QSettings
 {
 public:
     explicit EvDashSettings();
-
 };
 
 #endif // EVDASHSETTINGS_H

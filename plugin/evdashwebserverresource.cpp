@@ -25,13 +25,13 @@
 #include "evdashwebserverresource.h"
 #include "evdashsettings.h"
 
-#include <QUuid>
+#include <QCryptographicHash>
 #include <QFileInfo>
-#include <QJsonObject>
 #include <QJsonDocument>
+#include <QJsonObject>
 #include <QJsonParseError>
 #include <QRegularExpression>
-#include <QCryptographicHash>
+#include <QUuid>
 
 #include <QLoggingCategory>
 Q_DECLARE_LOGGING_CATEGORY(dcEvDashExperience)
@@ -191,10 +191,7 @@ HttpReply *EvDashWebServerResource::handleLoginRequest(const HttpRequest &reques
     const QJsonDocument requestDoc = QJsonDocument::fromJson(request.payload(), &parseError);
     if (parseError.error != QJsonParseError::NoError || !requestDoc.isObject()) {
         qCWarning(dcEvDashExperience()) << "Invalid login payload" << parseError.errorString();
-        QJsonObject errorPayload {
-            {QStringLiteral("success"), false},
-            {QStringLiteral("error"), QStringLiteral("invalidRequest")}
-        };
+        QJsonObject errorPayload{{QStringLiteral("success"), false}, {QStringLiteral("error"), QStringLiteral("invalidRequest")}};
         return HttpReply::createJsonReply(QJsonDocument(errorPayload), HttpReply::BadRequest);
     }
 
@@ -203,21 +200,14 @@ HttpReply *EvDashWebServerResource::handleLoginRequest(const HttpRequest &reques
     const QString password = requestObject.value(QStringLiteral("password")).toString();
 
     if (!verifyCredentials(username, password)) {
-        QJsonObject response {
-            {QStringLiteral("success"), false},
-            {QStringLiteral("error"), QStringLiteral("unauthorized")}
-        };
+        QJsonObject response{{QStringLiteral("success"), false}, {QStringLiteral("error"), QStringLiteral("unauthorized")}};
         return HttpReply::createJsonReply(QJsonDocument(response), HttpReply::Unauthorized);
     }
 
     const QString token = issueToken(username);
     const TokenInfo tokenInfo = m_activeTokens.value(token);
 
-    QJsonObject payload {
-        {QStringLiteral("success"), true},
-        {QStringLiteral("token"), token},
-        {QStringLiteral("expiresAt"), tokenInfo.expiresAt.toString(Qt::ISODateWithMs)}
-    };
+    QJsonObject payload{{QStringLiteral("success"), true}, {QStringLiteral("token"), token}, {QStringLiteral("expiresAt"), tokenInfo.expiresAt.toString(Qt::ISODateWithMs)}};
 
     return HttpReply::createJsonReply(QJsonDocument(payload));
 }
@@ -233,10 +223,7 @@ HttpReply *EvDashWebServerResource::handleRefreshRequest(const HttpRequest &requ
     QJsonParseError parseError;
     const QJsonDocument requestDoc = QJsonDocument::fromJson(request.payload(), &parseError);
     if (parseError.error != QJsonParseError::NoError || !requestDoc.isObject()) {
-        QJsonObject errorPayload {
-            {QStringLiteral("success"), false},
-            {QStringLiteral("error"), QStringLiteral("invalidRequest")}
-        };
+        QJsonObject errorPayload{{QStringLiteral("success"), false}, {QStringLiteral("error"), QStringLiteral("invalidRequest")}};
         return HttpReply::createJsonReply(QJsonDocument(errorPayload), HttpReply::BadRequest);
     }
 
@@ -245,10 +232,7 @@ HttpReply *EvDashWebServerResource::handleRefreshRequest(const HttpRequest &requ
     const QJsonObject requestObject = requestDoc.object();
     const QString token = requestObject.value(QStringLiteral("token")).toString();
     if (token.isEmpty() || !m_activeTokens.contains(token)) {
-        QJsonObject response {
-            {QStringLiteral("success"), false},
-            {QStringLiteral("error"), QStringLiteral("unauthorized")}
-        };
+        QJsonObject response{{QStringLiteral("success"), false}, {QStringLiteral("error"), QStringLiteral("unauthorized")}};
         return HttpReply::createJsonReply(QJsonDocument(response), HttpReply::Unauthorized);
     }
 
@@ -256,11 +240,7 @@ HttpReply *EvDashWebServerResource::handleRefreshRequest(const HttpRequest &requ
     info.expiresAt = QDateTime::currentDateTimeUtc().addSecs(s_tokenLifetimeSeconds);
     m_activeTokens.insert(token, info);
 
-    QJsonObject payload {
-        {QStringLiteral("success"), true},
-        {QStringLiteral("token"), token},
-        {QStringLiteral("expiresAt"), info.expiresAt.toString(Qt::ISODateWithMs)}
-    };
+    QJsonObject payload{{QStringLiteral("success"), true}, {QStringLiteral("token"), token}, {QStringLiteral("expiresAt"), info.expiresAt.toString(Qt::ISODateWithMs)}};
 
     return HttpReply::createJsonReply(QJsonDocument(payload));
 }

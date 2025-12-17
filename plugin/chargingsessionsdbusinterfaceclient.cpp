@@ -25,27 +25,24 @@
 #include "chargingsessionsdbusinterfaceclient.h"
 
 #include <QDBusArgument>
-#include <QDBusInterface>
 #include <QDBusConnectionInterface>
+#include <QDBusError>
+#include <QDBusInterface>
 #include <QDBusPendingCall>
 #include <QDBusPendingCallWatcher>
 #include <QDBusPendingReply>
 #include <QDBusReply>
-#include <QDBusError>
 #include <QDBusServiceWatcher>
 
 static const QString kDbusService = QStringLiteral("io.nymea.energy.chargingsessions");
 static const QString kDbusPath = QStringLiteral("/io/nymea/energy/chargingsessions");
 static const QString kDbusInterface = QStringLiteral("io.nymea.energy.chargingsessions");
 
-ChargingSessionsDBusInterfaceClient::ChargingSessionsDBusInterfaceClient(QObject *parent) :
-    QObject(parent),
-    m_connection(QDBusConnection::systemBus())
+ChargingSessionsDBusInterfaceClient::ChargingSessionsDBusInterfaceClient(QObject *parent)
+    : QObject(parent)
+    , m_connection(QDBusConnection::systemBus())
 {
-    m_serviceWatcher = new QDBusServiceWatcher(kDbusService,
-                                               m_connection,
-                                               QDBusServiceWatcher::WatchForRegistration | QDBusServiceWatcher::WatchForUnregistration,
-                                               this);
+    m_serviceWatcher = new QDBusServiceWatcher(kDbusService, m_connection, QDBusServiceWatcher::WatchForRegistration | QDBusServiceWatcher::WatchForUnregistration, this);
     connect(m_serviceWatcher, &QDBusServiceWatcher::serviceRegistered, this, &ChargingSessionsDBusInterfaceClient::onServiceRegistered);
     connect(m_serviceWatcher, &QDBusServiceWatcher::serviceUnregistered, this, &ChargingSessionsDBusInterfaceClient::onServiceUnregistered);
 

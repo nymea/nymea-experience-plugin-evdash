@@ -28,6 +28,4 @@
 
 EvDashSettings::EvDashSettings()
     : QSettings(NymeaSettings::settingsPath() + "/evdash.conf", QSettings::IniFormat)
-{
-
-}
+{}

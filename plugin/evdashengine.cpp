@@ -23,34 +23,34 @@
 * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "evdashengine.h"
+#include "chargingsessionsdbusinterfaceclient.h"
+#include "energymanagerdbusclient.h"
 #include "evdashsettings.h"
 #include "evdashwebserverresource.h"
-#include "energymanagerdbusclient.h"
-#include "chargingsessionsdbusinterfaceclient.h"
 
 #include <integrations/thingmanager.h>
 #include <logging/logengine.h>
 
-#include <QWebSocket>
-#include <QWebSocketServer>
 #include <QHostAddress>
+#include <QWebSocket>
 #include <QWebSocketProtocol>
+#include <QWebSocketServer>
 
 #include <QDateTime>
-#include <QJsonParseError>
+#include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
-#include <QJsonArray>
+#include <QJsonParseError>
 #include <QUuid>
 
 #include <QLoggingCategory>
 Q_DECLARE_LOGGING_CATEGORY(dcEvDashExperience)
 
 EvDashEngine::EvDashEngine(ThingManager *thingManager, LogEngine *logEngine, EvDashWebServerResource *webServerResource, QObject *parent)
-    : QObject{parent},
-    m_thingManager{thingManager},
-    m_logEngine{logEngine},
-    m_webServerResource{webServerResource}
+    : QObject{parent}
+    , m_thingManager{thingManager}
+    , m_logEngine{logEngine}
+    , m_webServerResource{webServerResource}
 {
     Things configuredThings = m_thingManager->configuredThings();
     foreach (Thing *thing, configuredThings) {
@@ -72,18 +72,16 @@ EvDashEngine::EvDashEngine(ThingManager *thingManager, LogEngine *logEngine, EvD
     // Setup websocket server
     m_webSocketServer = new QWebSocketServer(QStringLiteral("EvDashEngine"), QWebSocketServer::NonSecureMode, this);
 
-    connect(m_webSocketServer, &QWebSocketServer::newConnection, this, [this](){
+    connect(m_webSocketServer, &QWebSocketServer::newConnection, this, [this]() {
         QWebSocket *socket = m_webSocketServer->nextPendingConnection();
         if (!socket) {
             qCWarning(dcEvDashExperience()) << "Interface: Received new connection but socket was null";
             return;
         }
 
-        connect(socket, &QWebSocket::textMessageReceived, this, [this, socket](const QString &message) {
-            processTextMessage(socket, message);
-        });
+        connect(socket, &QWebSocket::textMessageReceived, this, [this, socket](const QString &message) { processTextMessage(socket, message); });
 
-        connect(socket, &QWebSocket::disconnected, this, [this, socket](){
+        connect(socket, &QWebSocket::disconnected, this, [this, socket]() {
             m_clients.removeAll(socket);
             m_authenticatedClients.remove(socket);
             qCDebug(dcEvDashExperience()) << "WebSocket client disconnected" << socket->peerAddress().toString() << "Remaining clients:" << m_clients.count();
@@ -107,23 +105,20 @@ EvDashEngine::EvDashEngine(ThingManager *thingManager, LogEngine *logEngine, EvD
 
     // ChargingSessions client for fetching charging sessions
     m_chargingSessionsClient = new ChargingSessionsDBusInterfaceClient(this);
-    connect(m_chargingSessionsClient, &ChargingSessionsDBusInterfaceClient::sessionsReceived,
-            this, &EvDashEngine::onSessionsReceived);
+    connect(m_chargingSessionsClient, &ChargingSessionsDBusInterfaceClient::sessionsReceived, this, &EvDashEngine::onSessionsReceived);
 
-    connect(m_chargingSessionsClient, &ChargingSessionsDBusInterfaceClient::errorOccurred,
-            this, &EvDashEngine::onSessionsError);
-
+    connect(m_chargingSessionsClient, &ChargingSessionsDBusInterfaceClient::errorOccurred, this, &EvDashEngine::onSessionsError);
 
     // Energy manager client for associated cars and current mode
     m_energyManagerClient = new EnergyManagerDbusClient(this);
-    connect(m_energyManagerClient, &EnergyManagerDbusClient::chargingInfosUpdated, this, [](const QVariantList &chargingInfos){
+    connect(m_energyManagerClient, &EnergyManagerDbusClient::chargingInfosUpdated, this, [](const QVariantList &chargingInfos) {
         qCDebug(dcEvDashExperience()) << "ChargingInfos:";
         foreach (const QVariant &ciVariant, chargingInfos) {
             qCDebug(dcEvDashExperience()) << "-->" << ciVariant.toMap();
         }
     });
 
-    connect(m_energyManagerClient, &EnergyManagerDbusClient::chargingInfoAdded, this, [this](const QVariantMap &chargingInfo){
+    connect(m_energyManagerClient, &EnergyManagerDbusClient::chargingInfoAdded, this, [this](const QVariantMap &chargingInfo) {
         qCDebug(dcEvDashExperience()) << "ChargingInfo added:" << chargingInfo;
         Thing *charger = m_thingManager->findConfiguredThing(chargingInfo.value("evChargerId").toUuid());
         if (charger) {
@@ -131,7 +126,7 @@ EvDashEngine::EvDashEngine(ThingManager *thingManager, LogEngine *logEngine, EvD
         }
     });
 
-    connect(m_energyManagerClient, &EnergyManagerDbusClient::chargingInfoChanged, this, [this](const QVariantMap &chargingInfo){
+    connect(m_energyManagerClient, &EnergyManagerDbusClient::chargingInfoChanged, this, [this](const QVariantMap &chargingInfo) {
         qCDebug(dcEvDashExperience()) << "ChargingInfo changed:" << chargingInfo;
         Thing *charger = m_thingManager->findConfiguredThing(chargingInfo.value("evChargerId").toUuid());
         if (charger) {
@@ -139,11 +134,11 @@ EvDashEngine::EvDashEngine(ThingManager *thingManager, LogEngine *logEngine, EvD
         }
     });
 
-    connect(m_energyManagerClient, &EnergyManagerDbusClient::chargingInfoRemoved, this, [](const QString &evChargerId){
+    connect(m_energyManagerClient, &EnergyManagerDbusClient::chargingInfoRemoved, this, [](const QString &evChargerId) {
         qCDebug(dcEvDashExperience()) << "ChargingInfo removed:" << evChargerId;
     });
 
-    connect(m_energyManagerClient, &EnergyManagerDbusClient::errorOccurred, this, [](const QString &errorMessage){
+    connect(m_energyManagerClient, &EnergyManagerDbusClient::errorOccurred, this, [](const QString &errorMessage) {
         qCWarning(dcEvDashExperience()) << "Energy manager DBus client error occurred:" << errorMessage;
     });
 
@@ -226,7 +221,6 @@ void EvDashEngine::onThingRemoved(const ThingId &thingId)
             break;
         }
     }
-
 }
 
 void EvDashEngine::onThingChanged(Thing *thing)
@@ -242,28 +236,34 @@ void EvDashEngine::onThingChanged(Thing *thing)
 
 void EvDashEngine::monitorChargerThing(Thing *thing)
 {
-    connect(thing, &Thing::stateValueChanged, this, [this, thing](const StateTypeId &stateTypeId, const QVariant &value, const QVariant &minValue, const QVariant &maxValue, const QVariantList &possibleValues){
-        Q_UNUSED(stateTypeId)
-        Q_UNUSED(value)
-        Q_UNUSED(minValue)
-        Q_UNUSED(maxValue)
-        Q_UNUSED(possibleValues)
+    connect(thing,
+            &Thing::stateValueChanged,
+            this,
+            [this, thing](const StateTypeId &stateTypeId, const QVariant &value, const QVariant &minValue, const QVariant &maxValue, const QVariantList &possibleValues) {
+                Q_UNUSED(stateTypeId)
+                Q_UNUSED(value)
+                Q_UNUSED(minValue)
+                Q_UNUSED(maxValue)
+                Q_UNUSED(possibleValues)
 
-        onThingChanged(thing);
-    });
+                onThingChanged(thing);
+            });
 }
 
 void EvDashEngine::monitorCarThing(Thing *thing)
 {
-    connect(thing, &Thing::stateValueChanged, this, [this, thing](const StateTypeId &stateTypeId, const QVariant &value, const QVariant &minValue, const QVariant &maxValue, const QVariantList &possibleValues){
-        Q_UNUSED(stateTypeId)
-        Q_UNUSED(value)
-        Q_UNUSED(minValue)
-        Q_UNUSED(maxValue)
-        Q_UNUSED(possibleValues)
+    connect(thing,
+            &Thing::stateValueChanged,
+            this,
+            [this, thing](const StateTypeId &stateTypeId, const QVariant &value, const QVariant &minValue, const QVariant &maxValue, const QVariantList &possibleValues) {
+                Q_UNUSED(stateTypeId)
+                Q_UNUSED(value)
+                Q_UNUSED(minValue)
+                Q_UNUSED(maxValue)
+                Q_UNUSED(possibleValues)
 
-        onThingChanged(thing);
-    });
+                onThingChanged(thing);
+            });
 }
 
 void EvDashEngine::verifyChargerStatusChanged(Thing *charger)
@@ -272,7 +272,6 @@ void EvDashEngine::verifyChargerStatusChanged(Thing *charger)
     QString source = QString("state-%1-%2").arg(charger->id().toString(QUuid::WithBraces), stateName);
     LogFetchJob *job = m_logEngine->fetchLogEntries({source}, {stateName}, {}, {}, {}, Types::SampleRateAny, Qt::DescendingOrder, 0, 1);
     connect(job, &LogFetchJob::finished, charger, [this, charger, stateName](const LogEntries &entries) {
-
         if (entries.isEmpty()) {
             qCDebug(dcEvDashExperience()) << "Last state change of" << charger->name() << stateName << "unknown";
             // Forget any cached values, the database did not return any information...
@@ -404,10 +403,7 @@ QJsonObject EvDashEngine::handleApiRequest(QWebSocket *socket, const QJsonObject
 
         m_authenticatedClients.insert(socket, token);
 
-        QJsonObject responsePayload {
-            {QStringLiteral("authenticated"), true},
-            {QStringLiteral("timestamp"), QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs)}
-        };
+        QJsonObject responsePayload{{QStringLiteral("authenticated"), true}, {QStringLiteral("timestamp"), QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs)}};
         return createSuccessResponse(requestId, responsePayload);
     }
 
@@ -423,7 +419,6 @@ QJsonObject EvDashEngine::handleApiRequest(QWebSocket *socket, const QJsonObject
     }
 
     if (action.compare(QStringLiteral("GetChargers"), Qt::CaseInsensitive) == 0) {
-
         QJsonObject payload;
         QJsonArray chargerList;
         foreach (Thing *thing, m_thingManager->configuredThings()) {
@@ -532,7 +527,6 @@ QJsonObject EvDashEngine::packCharger(Thing *charger) const
     foreach (const QVariant &chargingInfoVariant, m_energyManagerClient->chargingInfos()) {
         QVariantMap chargingInfo = chargingInfoVariant.toMap();
         if (chargingInfo.value("evChargerId").toUuid() == charger->id()) {
-
             // Set assigned car name
             if (chargingInfo.value("assignedCarId").toString().isEmpty()) {
                 chargerObject.insert("assignedCar", "");

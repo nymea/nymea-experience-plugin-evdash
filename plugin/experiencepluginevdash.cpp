@@ -31,13 +31,9 @@
 #include <jsonrpc/jsonrpcserver.h>
 #include <loggingcategories.h>
 
-
 NYMEA_LOGGING_CATEGORY(dcEvDashExperience, "EvDashExperience")
 
-ExperiencePluginEvDash::ExperiencePluginEvDash()
-{
-
-}
+ExperiencePluginEvDash::ExperiencePluginEvDash() {}
 
 void ExperiencePluginEvDash::init()
 {

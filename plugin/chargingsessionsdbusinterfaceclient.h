@@ -24,12 +24,12 @@
 
 #pragma once
 
-#include <QObject>
 #include <QDBusConnection>
-#include <QList>
-#include <QVariantMap>
-#include <QStringList>
 #include <QDBusServiceWatcher>
+#include <QList>
+#include <QObject>
+#include <QStringList>
+#include <QVariantMap>
 
 class QDBusInterface;
 class QDBusPendingCallWatcher;

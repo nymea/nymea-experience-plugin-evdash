@@ -34,7 +34,7 @@ Q_DECLARE_LOGGING_CATEGORY(dcEvDashExperience)
 class EvDashEngine;
 class EvDashWebServerResource;
 
-class ExperiencePluginEvDash: public ExperiencePlugin
+class ExperiencePluginEvDash : public ExperiencePlugin
 {
     Q_OBJECT
     Q_PLUGIN_METADATA(IID "io.nymea.ExperiencePlugin")
@@ -50,7 +50,6 @@ public:
 private:
     EvDashEngine *m_engine = nullptr;
     EvDashWebServerResource *m_resource = nullptr;
-
 };
 
 #endif // EXPERIENCEPLUGINEVDASH_H

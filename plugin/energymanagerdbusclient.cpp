@@ -24,12 +24,12 @@
 
 #include "energymanagerdbusclient.h"
 
+#include <QDBusArgument>
 #include <QDBusConnection>
 #include <QDBusConnectionInterface>
 #include <QDBusInterface>
-#include <QDBusArgument>
-#include <QDBusMetaType>
 #include <QDBusMessage>
+#include <QDBusMetaType>
 #include <QDBusPendingCall>
 #include <QDBusPendingCallWatcher>
 #include <QDBusReply>
@@ -39,19 +39,16 @@ static const QString kDbusService = QStringLiteral("io.nymea.energymanager");
 static const QString kDbusPath = QStringLiteral("/io/nymea/energymanager");
 static const QString kDbusInterface = QStringLiteral("io.nymea.energymanager");
 
-EnergyManagerDbusClient::EnergyManagerDbusClient(QObject *parent) :
-    QObject(parent),
-    m_connection(QDBusConnection::systemBus())
+EnergyManagerDbusClient::EnergyManagerDbusClient(QObject *parent)
+    : QObject(parent)
+    , m_connection(QDBusConnection::systemBus())
 {
     if (!m_connection.isConnected()) {
         emit errorOccurred(QStringLiteral("DBus system bus not connected"));
         return;
     }
 
-    m_serviceWatcher = new QDBusServiceWatcher(kDbusService,
-                                               m_connection,
-                                               QDBusServiceWatcher::WatchForRegistration | QDBusServiceWatcher::WatchForUnregistration,
-                                               this);
+    m_serviceWatcher = new QDBusServiceWatcher(kDbusService, m_connection, QDBusServiceWatcher::WatchForRegistration | QDBusServiceWatcher::WatchForUnregistration, this);
     connect(m_serviceWatcher, &QDBusServiceWatcher::serviceRegistered, this, &EnergyManagerDbusClient::onServiceRegistered);
     connect(m_serviceWatcher, &QDBusServiceWatcher::serviceUnregistered, this, &EnergyManagerDbusClient::onServiceUnregistered);
 
@@ -61,9 +58,7 @@ EnergyManagerDbusClient::EnergyManagerDbusClient(QObject *parent) :
     }
 }
 
-EnergyManagerDbusClient::~EnergyManagerDbusClient()
-{
-}
+EnergyManagerDbusClient::~EnergyManagerDbusClient() {}
 
 QVariantList EnergyManagerDbusClient::chargingInfos() const
 {

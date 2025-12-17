@@ -25,9 +25,9 @@
 #ifndef EVDASHWEBSERVERRESOURCE_H
 #define EVDASHWEBSERVERRESOURCE_H
 
-#include <QObject>
 #include <QDateTime>
 #include <QHash>
+#include <QObject>
 #include <QString>
 
 #include <webserver/webserverresource.h>
@@ -57,12 +57,14 @@ signals:
     void userRemoved(const QString &username);
 
 private:
-    struct TokenInfo {
+    struct TokenInfo
+    {
         QString username;
         QDateTime expiresAt;
     };
 
-    struct UserInfo {
+    struct UserInfo
+    {
         QString username;
         QByteArray passwordHash;
         QByteArray passwordSalt;
@@ -84,8 +86,6 @@ private:
     bool verifyStaticFile(const QString &fileName);
 
     bool verifyCredentials(const QString &username, const QString &password) const;
-
-
 };
 
 #endif // EVDASHWEBSERVERRESOURCE_H

@@ -25,9 +25,9 @@
 #ifndef ENERGYMANAGERDBUSCLIENT_H
 #define ENERGYMANAGERDBUSCLIENT_H
 
+#include <QDBusConnection>
 #include <QObject>
 #include <QVariantList>
-#include <QDBusConnection>
 
 class QDBusInterface;
 class QDBusPendingCallWatcher;

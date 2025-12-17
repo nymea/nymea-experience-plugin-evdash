@@ -25,9 +25,9 @@
 #ifndef EVDASHENGINE_H
 #define EVDASHENGINE_H
 
-#include <QObject>
 #include <QHash>
 #include <QJsonObject>
+#include <QObject>
 #include <QPointer>
 #include <QStringList>
 
@@ -47,13 +47,7 @@ class EvDashEngine : public QObject
 {
     Q_OBJECT
 public:
-    enum EvDashError {
-        EvDashErrorNoError = 0,
-        EvDashErrorBackendError,
-        EvDashErrorDuplicateUser,
-        EvDashErrorUserNotFound,
-        EvDashErrorBadPassword
-    };
+    enum EvDashError { EvDashErrorNoError = 0, EvDashErrorBackendError, EvDashErrorDuplicateUser, EvDashErrorUserNotFound, EvDashErrorBadPassword };
     Q_ENUM(EvDashError)
 
     explicit EvDashEngine(ThingManager *thingManager, LogEngine *logEngine, EvDashWebServerResource *webServerResource, QObject *parent = nullptr);
@@ -118,7 +112,6 @@ private:
     QJsonObject packCar(Thing *car) const;
     void onSessionsReceived(const QList<QVariantMap> &sessions);
     void onSessionsError(const QString &errorMessage);
-
 };
 
 #endif // EVDASHENGINE_H
