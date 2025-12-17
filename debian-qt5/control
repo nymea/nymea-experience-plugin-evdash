@@ -1,7 +1,7 @@
 Source: nymea-experience-plugin-evdash
 Section: utils
 Priority: optional
-Maintainer: nymea GmbH <developer@nymea.io>
+Maintainer: chargebyte austria GmbH <developer@nymea.io>
 Standards-Version: 4.6.0
 Homepage: https://nymea.io
 Build-Depends: debhelper,

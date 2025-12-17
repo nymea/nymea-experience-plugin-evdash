@@ -1,7 +1,6 @@
 Format: http://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 Upstream-Name: nymea-experience-plugin-evdash
-Upstream-Contact: nymea GmbH <contact@nymea.io>
-Copyright: 2013-2025, nymea GmbH
+Upstream-Contact: chargebyte austria GmbH <contact@nymea.io>
 Download: http://www.github.com/nymea/nymea-experience-plugin-evdash
 Source: https://github.com/nymea/nymea-experience-plugin-evdash.git
 
@@ -11,5 +10,5 @@ License: GPL-3
 
 Files: *
 License: GPL-3
-Copyright: 2013-2025, nymea GmbH <contact@nymea.io>
-
+Copyright: 2013-2024, nymea GmbH <contact@nymea.io>
+           2024-2025, chargebyte austria GmbH <contact@nymea.io>
