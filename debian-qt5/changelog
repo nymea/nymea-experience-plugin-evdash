@@ -1,5 +1,7 @@
-nymea-experience-plugin-evdash (0.1.0) UNRELEASED; urgency=medium
+nymea-experience-plugin-evdash (1.14.0) noble; urgency=medium
 
+  [ Simon Stürz ]
   * Initial release.
+  * Initial version of the EV Dash experience
 
- -- Simon Stürz <simon.stuerz@nymea.io>  Mon, 10 Nov 2025 10:37:23 +0100
+ -- jenkins <developer@nymea.io>  Thu, 15 Jan 2026 15:30:17 +0100
