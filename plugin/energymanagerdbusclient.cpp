@@ -28,10 +28,6 @@
 #include <QDBusConnection>
 #include <QDBusConnectionInterface>
 #include <QDBusInterface>
-#include <QDBusMessage>
-#include <QDBusMetaType>
-#include <QDBusPendingCall>
-#include <QDBusPendingCallWatcher>
 #include <QDBusReply>
 #include <QDBusServiceWatcher>
 
@@ -60,12 +56,17 @@ EnergyManagerDbusClient::EnergyManagerDbusClient(QObject *parent)
 
 EnergyManagerDbusClient::~EnergyManagerDbusClient() {}
 
-QVariantList EnergyManagerDbusClient::chargingInfos() const
+QVariantList EnergyManagerDbusClient::chargingConfigurations() const
 {
-    return m_chargingInfos;
+    return m_chargingConfigurations;
 }
 
-void EnergyManagerDbusClient::refreshChargingInfos()
+QVariantList EnergyManagerDbusClient::chargingStates() const
+{
+    return m_chargingStates;
+}
+
+void EnergyManagerDbusClient::refreshChargingData()
 {
     if (!m_interface || !m_interface->isValid()) {
         if (!setupInterface()) {
@@ -79,56 +80,93 @@ void EnergyManagerDbusClient::refreshChargingInfos()
         return;
     }
 
-    QDBusReply<QVariantList> reply = m_interface->call(QStringLiteral("chargingInfos"));
-    if (!reply.isValid()) {
-        emit errorOccurred(reply.error().message());
+    const QDBusReply<QVariantList> chargingConfigurationsReply = m_interface->call(QStringLiteral("chargingConfigurations"));
+    if (!chargingConfigurationsReply.isValid()) {
+        emit errorOccurred(chargingConfigurationsReply.error().message());
         return;
     }
 
-    QVariantList convertedInfos;
-    const QVariantList infos = reply.value();
-    for (const QVariant &value : infos) {
+    const QDBusReply<QVariantList> chargingStatesReply = m_interface->call(QStringLiteral("chargingStates"));
+    if (!chargingStatesReply.isValid()) {
+        emit errorOccurred(chargingStatesReply.error().message());
+        return;
+    }
+
+    m_chargingConfigurations = deserializeVariantMapList(chargingConfigurationsReply.value());
+    m_chargingStates = deserializeVariantMapList(chargingStatesReply.value());
+
+    emit chargingConfigurationsUpdated(m_chargingConfigurations);
+    emit chargingStatesUpdated(m_chargingStates);
+}
+
+QVariantList EnergyManagerDbusClient::deserializeVariantMapList(const QVariantList &values)
+{
+    QVariantList deserializedValues;
+    for (const QVariant &value : values) {
         if (value.canConvert<QVariantMap>()) {
-            convertedInfos.append(value.toMap());
+            deserializedValues.append(value.toMap());
             continue;
         }
 
         const QDBusArgument arg = value.value<QDBusArgument>();
-        convertedInfos.append(qdbus_cast<QVariantMap>(arg));
+        deserializedValues.append(qdbus_cast<QVariantMap>(arg));
     }
 
-    m_chargingInfos = convertedInfos;
-    emit chargingInfosUpdated(m_chargingInfos);
+    return deserializedValues;
 }
 
-void EnergyManagerDbusClient::onChargingInfoAdded(const QVariantMap &chargingInfo)
+void EnergyManagerDbusClient::onChargingConfigurationAdded(const QVariantMap &chargingConfiguration)
 {
-    replaceOrAdd(chargingInfo);
-    emit chargingInfoAdded(chargingInfo);
-    emit chargingInfosUpdated(m_chargingInfos);
+    replaceOrAddEntry(m_chargingConfigurations, chargingConfiguration);
+    emit chargingConfigurationAdded(chargingConfiguration);
+    emit chargingConfigurationsUpdated(m_chargingConfigurations);
 }
 
-void EnergyManagerDbusClient::onChargingInfoRemoved(const QString &evChargerId)
+void EnergyManagerDbusClient::onChargingConfigurationRemoved(const QString &evChargerId)
 {
-    int index = indexOfInfo(evChargerId);
+    const int index = indexOfEntry(m_chargingConfigurations, evChargerId);
     if (index >= 0) {
-        m_chargingInfos.removeAt(index);
-        emit chargingInfoRemoved(evChargerId);
-        emit chargingInfosUpdated(m_chargingInfos);
+        m_chargingConfigurations.removeAt(index);
+        emit chargingConfigurationRemoved(evChargerId);
+        emit chargingConfigurationsUpdated(m_chargingConfigurations);
     }
 }
 
-void EnergyManagerDbusClient::onChargingInfoChanged(const QVariantMap &chargingInfo)
+void EnergyManagerDbusClient::onChargingConfigurationChanged(const QVariantMap &chargingConfiguration)
 {
-    replaceOrAdd(chargingInfo);
-    emit chargingInfoChanged(chargingInfo);
-    emit chargingInfosUpdated(m_chargingInfos);
+    replaceOrAddEntry(m_chargingConfigurations, chargingConfiguration);
+    emit chargingConfigurationChanged(chargingConfiguration);
+    emit chargingConfigurationsUpdated(m_chargingConfigurations);
 }
 
-int EnergyManagerDbusClient::indexOfInfo(const QString &evChargerId) const
+void EnergyManagerDbusClient::onChargingStateAdded(const QVariantMap &chargingState)
 {
-    for (int i = 0; i < m_chargingInfos.count(); ++i) {
-        const QVariantMap map = m_chargingInfos.at(i).toMap();
+    replaceOrAddEntry(m_chargingStates, chargingState);
+    emit chargingStateAdded(chargingState);
+    emit chargingStatesUpdated(m_chargingStates);
+}
+
+void EnergyManagerDbusClient::onChargingStateRemoved(const QString &evChargerId)
+{
+    const int index = indexOfEntry(m_chargingStates, evChargerId);
+    if (index >= 0) {
+        m_chargingStates.removeAt(index);
+        emit chargingStateRemoved(evChargerId);
+        emit chargingStatesUpdated(m_chargingStates);
+    }
+}
+
+void EnergyManagerDbusClient::onChargingStateChanged(const QVariantMap &chargingState)
+{
+    replaceOrAddEntry(m_chargingStates, chargingState);
+    emit chargingStateChanged(chargingState);
+    emit chargingStatesUpdated(m_chargingStates);
+}
+
+int EnergyManagerDbusClient::indexOfEntry(const QVariantList &entries, const QString &evChargerId) const
+{
+    for (int i = 0; i < entries.count(); ++i) {
+        const QVariantMap map = entries.at(i).toMap();
         if (map.value(QStringLiteral("evChargerId")).toString() == evChargerId) {
             return i;
         }
@@ -136,14 +174,14 @@ int EnergyManagerDbusClient::indexOfInfo(const QString &evChargerId) const
     return -1;
 }
 
-void EnergyManagerDbusClient::replaceOrAdd(const QVariantMap &chargingInfo)
+void EnergyManagerDbusClient::replaceOrAddEntry(QVariantList &entries, const QVariantMap &entry)
 {
-    const QString evChargerId = chargingInfo.value(QStringLiteral("evChargerId")).toString();
-    int index = indexOfInfo(evChargerId);
+    const QString evChargerId = entry.value(QStringLiteral("evChargerId")).toString();
+    const int index = indexOfEntry(entries, evChargerId);
     if (index >= 0) {
-        m_chargingInfos[index] = chargingInfo;
+        entries[index] = entry;
     } else {
-        m_chargingInfos.append(chargingInfo);
+        entries.append(entry);
     }
 }
 
@@ -172,9 +210,13 @@ bool EnergyManagerDbusClient::setupInterface()
         return false;
     }
 
-    connect(m_interface, SIGNAL(chargingInfoAdded(QVariantMap)), this, SLOT(onChargingInfoAdded(QVariantMap)), Qt::UniqueConnection);
-    connect(m_interface, SIGNAL(chargingInfoRemoved(QString)), this, SLOT(onChargingInfoRemoved(QString)), Qt::UniqueConnection);
-    connect(m_interface, SIGNAL(chargingInfoChanged(QVariantMap)), this, SLOT(onChargingInfoChanged(QVariantMap)), Qt::UniqueConnection);
+    connect(m_interface, SIGNAL(chargingConfigurationAdded(QVariantMap)), this, SLOT(onChargingConfigurationAdded(QVariantMap)), Qt::UniqueConnection);
+    connect(m_interface, SIGNAL(chargingConfigurationRemoved(QString)), this, SLOT(onChargingConfigurationRemoved(QString)), Qt::UniqueConnection);
+    connect(m_interface, SIGNAL(chargingConfigurationChanged(QVariantMap)), this, SLOT(onChargingConfigurationChanged(QVariantMap)), Qt::UniqueConnection);
+
+    connect(m_interface, SIGNAL(chargingStateAdded(QVariantMap)), this, SLOT(onChargingStateAdded(QVariantMap)), Qt::UniqueConnection);
+    connect(m_interface, SIGNAL(chargingStateRemoved(QString)), this, SLOT(onChargingStateRemoved(QString)), Qt::UniqueConnection);
+    connect(m_interface, SIGNAL(chargingStateChanged(QVariantMap)), this, SLOT(onChargingStateChanged(QVariantMap)), Qt::UniqueConnection);
 
     return true;
 }
@@ -186,7 +228,7 @@ void EnergyManagerDbusClient::onServiceRegistered(const QString &service)
     }
 
     if (setupInterface()) {
-        refreshChargingInfos();
+        refreshChargingData();
     }
 }
 
@@ -198,6 +240,8 @@ void EnergyManagerDbusClient::onServiceUnregistered(const QString &service)
 
     delete m_interface;
     m_interface = nullptr;
-    m_chargingInfos.clear();
-    emit chargingInfosUpdated(m_chargingInfos);
+    m_chargingConfigurations.clear();
+    m_chargingStates.clear();
+    emit chargingConfigurationsUpdated(m_chargingConfigurations);
+    emit chargingStatesUpdated(m_chargingStates);
 }

@@ -111,40 +111,40 @@ EvDashEngine::EvDashEngine(ThingManager *thingManager, LogEngine *logEngine, EvD
 
     // Energy manager client for associated cars and current mode
     m_energyManagerClient = new EnergyManagerDbusClient(this);
-    connect(m_energyManagerClient, &EnergyManagerDbusClient::chargingInfosUpdated, this, [](const QVariantList &chargingInfos) {
-        qCDebug(dcEvDashExperience()) << "ChargingInfos:";
-        foreach (const QVariant &ciVariant, chargingInfos) {
+    connect(m_energyManagerClient, &EnergyManagerDbusClient::chargingConfigurationsUpdated, this, [](const QVariantList &chargingConfigurations) {
+        qCDebug(dcEvDashExperience()) << "ChargingConfigurations:";
+        foreach (const QVariant &ciVariant, chargingConfigurations) {
             qCDebug(dcEvDashExperience()) << "-->" << ciVariant.toMap();
         }
     });
 
-    connect(m_energyManagerClient, &EnergyManagerDbusClient::chargingInfoAdded, this, [this](const QVariantMap &chargingInfo) {
-        qCDebug(dcEvDashExperience()) << "ChargingInfo added:" << chargingInfo;
-        Thing *charger = m_thingManager->findConfiguredThing(chargingInfo.value("evChargerId").toUuid());
+    connect(m_energyManagerClient, &EnergyManagerDbusClient::chargingConfigurationAdded, this, [this](const QVariantMap &chargingConfiguration) {
+        qCDebug(dcEvDashExperience()) << "ChargingConfiguration added:" << chargingConfiguration;
+        Thing *charger = m_thingManager->findConfiguredThing(chargingConfiguration.value("evChargerId").toUuid());
         if (charger) {
             onThingChanged(charger);
         }
     });
 
-    connect(m_energyManagerClient, &EnergyManagerDbusClient::chargingInfoChanged, this, [this](const QVariantMap &chargingInfo) {
-        qCDebug(dcEvDashExperience()) << "ChargingInfo changed:" << chargingInfo;
-        Thing *charger = m_thingManager->findConfiguredThing(chargingInfo.value("evChargerId").toUuid());
+    connect(m_energyManagerClient, &EnergyManagerDbusClient::chargingConfigurationChanged, this, [this](const QVariantMap &chargingConfiguration) {
+        qCDebug(dcEvDashExperience()) << "ChargingConfiguration changed:" << chargingConfiguration;
+        Thing *charger = m_thingManager->findConfiguredThing(chargingConfiguration.value("evChargerId").toUuid());
         if (charger) {
             onThingChanged(charger);
         }
     });
 
-    connect(m_energyManagerClient, &EnergyManagerDbusClient::chargingInfoRemoved, this, [](const QString &evChargerId) {
-        qCDebug(dcEvDashExperience()) << "ChargingInfo removed:" << evChargerId;
+    connect(m_energyManagerClient, &EnergyManagerDbusClient::chargingConfigurationRemoved, this, [](const QString &evChargerId) {
+        qCDebug(dcEvDashExperience()) << "ChargingConfiguration removed:" << evChargerId;
     });
 
     connect(m_energyManagerClient, &EnergyManagerDbusClient::errorOccurred, this, [](const QString &errorMessage) {
         qCWarning(dcEvDashExperience()) << "Energy manager DBus client error occurred:" << errorMessage;
     });
 
-    qCDebug(dcEvDashExperience()) << "ChargingInfos:" << m_energyManagerClient->chargingInfos();
-    foreach (const QVariant &ciVariant, m_energyManagerClient->chargingInfos()) {
-        qCDebug(dcEvDashExperience()) << "-->" << ciVariant.toMap();
+    qCDebug(dcEvDashExperience()) << "ChargingConfigurations:" << m_energyManagerClient->chargingConfigurations();
+    foreach (const QVariant &ccVariant, m_energyManagerClient->chargingConfigurations()) {
+        qCDebug(dcEvDashExperience()) << "-->" << ccVariant.toMap();
     }
 
     // Start the service if enabled
@@ -524,14 +524,14 @@ QJsonObject EvDashEngine::packCharger(Thing *charger) const
     chargerObject.insert("id", charger->id().toString(QUuid::WithoutBraces));
     chargerObject.insert("name", charger->name());
 
-    foreach (const QVariant &chargingInfoVariant, m_energyManagerClient->chargingInfos()) {
-        QVariantMap chargingInfo = chargingInfoVariant.toMap();
-        if (chargingInfo.value("evChargerId").toUuid() == charger->id()) {
+    foreach (const QVariant &chargingConfigurationVariant, m_energyManagerClient->chargingConfigurations()) {
+        QVariantMap chargingConfiguration = chargingConfigurationVariant.toMap();
+        if (chargingConfiguration.value("evChargerId").toUuid() == charger->id()) {
             // Set assigned car name
-            if (chargingInfo.value("assignedCarId").toString().isEmpty()) {
+            if (chargingConfiguration.value("assignedCarId").toString().isEmpty()) {
                 chargerObject.insert("assignedCar", "");
             } else {
-                Thing *car = m_thingManager->findConfiguredThing(chargingInfo.value("assignedCarId").toUuid());
+                Thing *car = m_thingManager->findConfiguredThing(chargingConfiguration.value("assignedCarId").toUuid());
                 if (car) {
                     chargerObject.insert("assignedCar", car->name());
                 } else {
@@ -540,7 +540,7 @@ QJsonObject EvDashEngine::packCharger(Thing *charger) const
             }
 
             // Set energyManagerMode
-            chargerObject.insert("energyManagerMode", chargingInfo.value("chargingMode").toInt());
+            chargerObject.insert("energyManagerMode", chargingConfiguration.value("chargingMode").toInt());
         }
     }
 
@@ -618,12 +618,12 @@ QStringList EvDashEngine::carThingIdsForCharger(const QString &chargerId) const
     if (chargerUuid.isNull())
         return carThingIds;
 
-    for (const QVariant &ciVariant : m_energyManagerClient->chargingInfos()) {
-        const QVariantMap chargingInfo = ciVariant.toMap();
-        if (chargingInfo.value(QStringLiteral("evChargerId")).toUuid() != chargerUuid)
+    for (const QVariant &ciVariant : m_energyManagerClient->chargingConfigurations()) {
+        const QVariantMap chargingConfiguration = ciVariant.toMap();
+        if (chargingConfiguration.value(QStringLiteral("evChargerId")).toUuid() != chargerUuid)
             continue;
 
-        const QString assignedCarId = chargingInfo.value(QStringLiteral("assignedCarId")).toString();
+        const QString assignedCarId = chargingConfiguration.value(QStringLiteral("assignedCarId")).toString();
         if (!assignedCarId.isEmpty())
             carThingIds.append(assignedCarId);
 
