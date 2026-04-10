@@ -15,9 +15,6 @@ class DashboardApp {
             connectionStatus: document.getElementById('connectionStatus'),
             sessionUsername: document.getElementById('sessionUsername'),
             logoutButton: document.getElementById('logoutButton'),
-            requestTemplate: document.getElementById('requestTemplate'),
-            responseTemplate: document.getElementById('responseTemplate'),
-            incomingMessage: document.getElementById('incomingMessage'),
             easterEggOverlay: document.getElementById('easterEggOverlay'),
             easterEggCanvas: document.getElementById('easterEggCanvas'),
             easterEggClose: document.getElementById('easterEggClose'),
@@ -26,12 +23,12 @@ class DashboardApp {
             chargerEmptyRow: document.getElementById('chargerEmptyRow'),
             fetchSessionsButton: document.getElementById('fetchSessionsButton'),
             downloadSessionsButton: document.getElementById('downloadSessionsButton'),
+            chargerFilter: document.getElementById('chargerFilter'),
             carFilter: document.getElementById('carFilter'),
             sessionStartFilter: document.getElementById('sessionStartFilter'),
             sessionEndFilter: document.getElementById('sessionEndFilter'),
             chargingSessionsTableBody: document.getElementById('chargingSessionsTableBody'),
             chargingSessionsEmptyRow: document.getElementById('chargingSessionsEmptyRow'),
-            chargingSessionsOutput: document.getElementById('chargingSessionsOutput'),
             panelButtons: Array.from(document.querySelectorAll('[data-panel-target]')),
             contentPanels: Array.from(document.querySelectorAll('[data-panel]'))
         };
@@ -75,11 +72,11 @@ class DashboardApp {
 
         this.translateDocument();
         this.updateEasterEggScore();
-        this.renderStaticTemplates();
         this.attachEventListeners();
         this.initializePanelNavigation();
         this.restoreSession();
         this.toggleChargerEmptyState();
+        this.updateChargerSelector();
         this.updateCarSelector();
     }
 
@@ -124,7 +121,7 @@ class DashboardApp {
                 'sidebar.sessions': 'Charging sessions',
                 'sidebar.sessionsSubtitle': 'History of charging sessions',
                 'sidebar.help': 'Help',
-                'sidebar.helpSubtitle': 'API concept & debug logs',
+                'sidebar.helpSubtitle': 'How to use the dashboard',
                 'sidebar.version': 'Version',
 
                 'chargers.liveOverview': 'Live overview',
@@ -154,13 +151,15 @@ class DashboardApp {
 
                 'sessions.history': 'History',
                 'sessions.title': 'Charging sessions',
+                'sessions.filterCharger': 'Charger',
+                'sessions.allChargers': 'All chargers',
                 'sessions.filterCar': 'Car',
                 'sessions.allCars': 'All cars',
                 'sessions.filterStartDate': 'Start date',
                 'sessions.filterEndDate': 'End date',
                 'sessions.fetch': 'Refresh view',
                 'sessions.downloadCsv': 'Download CSV',
-                'sessions.helper': 'Optionally filter charging sessions by car and time range before downloading.',
+                'sessions.helper': 'Optionally filter charging sessions by charger, car and time range before downloading.',
                 'sessions.columns.name': 'Name',
                 'sessions.columns.charger': 'Charger',
                 'sessions.columns.car': 'Car',
@@ -170,6 +169,7 @@ class DashboardApp {
                 'sessions.emptyFetched': 'No charging sessions fetched yet.',
                 'sessions.noneFound': 'No charging sessions found.',
                 'sessions.noneInRange': 'No charging sessions match the selected time range.',
+                'sessions.noneMatchingFilters': 'No charging sessions match the selected filters.',
                 'sessions.fetchFailed': 'Failed to fetch charging sessions.',
                 'sessions.requestFailed': 'Unable to request charging sessions. Check the connection status.',
                 'sessions.displayFailed': 'Unable to display charging sessions.',
@@ -177,23 +177,42 @@ class DashboardApp {
                 'sessions.sessionIdLabel': 'Session {id}',
 
                 'help.guides': 'Guides',
-                'help.title': 'API Contract',
-                'help.helper': 'Use <code>app.sendAction(action, payload)</code> after authenticating.',
-                'help.requestTemplate': 'Request template',
-                'help.responses': 'Responses',
-                'help.diagnostics': 'Diagnostics',
-                'help.lastMessage': 'Last WebSocket message',
-                'help.diagnosticsHelper': 'Sign in to reuse the stored session and inspect backend payloads.',
-                'help.noMessagesYet': 'No messages received yet.',
-                'help.debugging': 'Debugging',
-                'help.sessionsPayload': 'Charging sessions payload',
-                'help.sessionsPayloadHelper': 'Raw session JSON for troubleshooting.',
-                'help.reference': 'Reference',
-                'help.chargerTableBasics': 'Charger table basics',
-                'help.referenceBullet1': 'The dashboard keeps one row per charger ID and updates it with backend notifications.',
-                'help.referenceBullet2': 'Columns follow the order defined by <code>EvDashEngine::packCharger</code> so new properties show up automatically.',
-                'help.referenceBullet3': 'Branding (colours, fonts) is managed via CSS variables at the top of this file for easy overrides.',
-                'help.referenceBullet4': 'Select a charger row to expand additional charger details.',
+                'help.title': 'Using EV Dash',
+                'help.helper': 'This page explains the main areas of the dashboard and the most common actions.',
+                'help.gettingStartedTitle': 'Getting started',
+                'help.gettingStartedStep1': 'Sign in with your user name and password.',
+                'help.gettingStartedStep2': 'Wait until the status in the header changes to Connected.',
+                'help.gettingStartedStep3': 'Open the Chargers section to see the live status of all available chargers.',
+                'help.gettingStartedStep4': 'Select a charger row to open more details for that charger.',
+                'help.connectionTitle': 'Connection status',
+                'help.connectionBullet1': 'Connected means live values are up to date.',
+                'help.connectionBullet2': 'Connecting or Authenticating means the dashboard is restoring access.',
+                'help.connectionBullet3': 'Disconnected or Connection error means live updates are temporarily unavailable.',
+                'help.connectionBullet4': 'If needed, sign in again or ask your administrator for support.',
+                'help.liveView': 'Live view',
+                'help.chargersTitle': 'Understand the charger overview',
+                'help.chargersHelper': 'The Chargers section shows the current state of each charger in one place.',
+                'help.chargersBullet1': 'Name and Car help you identify the charger and the assigned vehicle.',
+                'help.chargersBullet2': 'Energy manager mode shows whether charging is running in quick, eco or timed operation.',
+                'help.chargersBullet3': 'Reachable shows whether the charger is currently available.',
+                'help.chargersBullet4': 'Status shows whether the charger is ready, a car is connected or charging is active.',
+                'help.chargersBullet5': 'Charging current, phases and current power describe the live charging performance.',
+                'help.chargersBullet6': 'Session energy shows how much energy has been delivered in the current charging session.',
+                'help.history': 'History',
+                'help.sessionsTitle': 'Use charging sessions',
+                'help.sessionsHelper': 'The Charging sessions section helps you review past charging activity and export it.',
+                'help.sessionsStep1': 'Open Charging sessions to load the session history.',
+                'help.sessionsStep2': 'Use the car filter if you only want to see sessions for one vehicle.',
+                'help.sessionsStep3': 'Set a start date and end date to narrow the time range.',
+                'help.sessionsStep4': 'Select Refresh view to update the table.',
+                'help.sessionsStep5': 'Select Download CSV to export the currently shown session list.',
+                'help.everyday': 'Everyday tasks',
+                'help.commonTasksTitle': 'Common things you can do',
+                'help.commonTaskBullet1': 'Check whether a vehicle is connected, waiting or actively charging.',
+                'help.commonTaskBullet2': 'Compare the live power and charging current of multiple chargers.',
+                'help.commonTaskBullet3': 'See how much energy was delivered during the current session.',
+                'help.commonTaskBullet4': 'Look up earlier charging sessions for a specific car or time period.',
+                'help.commonTaskBullet5': 'Download the visible charging history as a CSV file for further use.',
 
                 'easterEgg.hiddenTreat': 'Hidden treat',
                 'easterEgg.title': 'Grid Dash',
@@ -273,7 +292,7 @@ class DashboardApp {
                 'sidebar.sessions': 'Ladevorgänge',
                 'sidebar.sessionsSubtitle': 'Historie der Ladevorgänge',
                 'sidebar.help': 'Hilfe',
-                'sidebar.helpSubtitle': 'API-Konzept & Debug-Logs',
+                'sidebar.helpSubtitle': 'So nutzt du das Dashboard',
                 'sidebar.version': 'Version',
 
                 'chargers.liveOverview': 'Live-Übersicht',
@@ -303,13 +322,15 @@ class DashboardApp {
 
                 'sessions.history': 'Historie',
                 'sessions.title': 'Ladevorgänge',
+                'sessions.filterCharger': 'Ladestation',
+                'sessions.allChargers': 'Alle Ladestationen',
                 'sessions.filterCar': 'Fahrzeug',
                 'sessions.allCars': 'Alle Fahrzeuge',
                 'sessions.filterStartDate': 'Startdatum',
                 'sessions.filterEndDate': 'Enddatum',
                 'sessions.fetch': 'Ansicht aktualisieren',
                 'sessions.downloadCsv': 'CSV herunterladen',
-                'sessions.helper': 'Optional nach Fahrzeug und Zeitraum filtern, bevor du die CSV herunterlädst.',
+                'sessions.helper': 'Optional nach Ladestation, Fahrzeug und Zeitraum filtern, bevor du die CSV herunterlädst.',
                 'sessions.columns.name': 'Name',
                 'sessions.columns.charger': 'Ladestation',
                 'sessions.columns.car': 'Fahrzeug',
@@ -319,6 +340,7 @@ class DashboardApp {
                 'sessions.emptyFetched': 'Noch keine Ladevorgänge geladen.',
                 'sessions.noneFound': 'Keine Ladevorgänge gefunden.',
                 'sessions.noneInRange': 'Keine Ladevorgänge im ausgewählten Zeitraum.',
+                'sessions.noneMatchingFilters': 'Keine Ladevorgänge entsprechen den ausgewählten Filtern.',
                 'sessions.fetchFailed': 'Ladevorgänge konnten nicht geladen werden.',
                 'sessions.requestFailed': 'Ladevorgänge konnten nicht angefragt werden. Bitte Verbindungsstatus prüfen.',
                 'sessions.displayFailed': 'Ladevorgänge können nicht angezeigt werden.',
@@ -326,23 +348,42 @@ class DashboardApp {
                 'sessions.sessionIdLabel': 'Sitzung {id}',
 
                 'help.guides': 'Leitfäden',
-                'help.title': 'API-Vertrag',
-                'help.helper': 'Nach der Authentifizierung kannst du <code>app.sendAction(action, payload)</code> verwenden.',
-                'help.requestTemplate': 'Request-Vorlage',
-                'help.responses': 'Antworten',
-                'help.diagnostics': 'Diagnose',
-                'help.lastMessage': 'Letzte WebSocket-Nachricht',
-                'help.diagnosticsHelper': 'Anmelden, um die gespeicherte Sitzung zu nutzen und Backend-Payloads zu prüfen.',
-                'help.noMessagesYet': 'Noch keine Nachrichten empfangen.',
-                'help.debugging': 'Debugging',
-                'help.sessionsPayload': 'Ladevorgänge-Payload',
-                'help.sessionsPayloadHelper': 'Rohes Session-JSON zur Fehlersuche.',
-                'help.reference': 'Referenz',
-                'help.chargerTableBasics': 'Grundlagen der Ladestationen-Tabelle',
-                'help.referenceBullet1': 'Das Dashboard hält eine Zeile pro Ladestations-ID und aktualisiert sie über Backend-Benachrichtigungen.',
-                'help.referenceBullet2': 'Die Spalten folgen der Reihenfolge aus <code>EvDashEngine::packCharger</code>, sodass neue Eigenschaften automatisch erscheinen.',
-                'help.referenceBullet3': 'Branding (Farben, Schrift) wird über CSS-Variablen am Anfang dieser Datei gesteuert.',
-                'help.referenceBullet4': 'Wähle eine Ladestationszeile aus, um zusätzliche Details einzublenden.',
+                'help.title': 'EV Dash verwenden',
+                'help.helper': 'Diese Seite erklärt die wichtigsten Bereiche des Dashboards und die häufigsten Aktionen.',
+                'help.gettingStartedTitle': 'Erste Schritte',
+                'help.gettingStartedStep1': 'Melde dich mit deinem Benutzernamen und Passwort an.',
+                'help.gettingStartedStep2': 'Warte, bis der Status in der Kopfzeile auf Verbunden wechselt.',
+                'help.gettingStartedStep3': 'Öffne den Bereich Ladestationen, um den Live-Status aller verfügbaren Ladestationen zu sehen.',
+                'help.gettingStartedStep4': 'Wähle eine Zeile aus, um mehr Details zu dieser Ladestation zu öffnen.',
+                'help.connectionTitle': 'Verbindungsstatus',
+                'help.connectionBullet1': 'Verbunden bedeutet, dass die Live-Werte aktuell sind.',
+                'help.connectionBullet2': 'Verbinden oder Authentifizierung bedeutet, dass das Dashboard den Zugriff wiederherstellt.',
+                'help.connectionBullet3': 'Getrennt oder Verbindungsfehler bedeutet, dass Live-Aktualisierungen vorübergehend nicht verfügbar sind.',
+                'help.connectionBullet4': 'Falls nötig, melde dich erneut an oder frage deinen Administrator um Unterstützung.',
+                'help.liveView': 'Live-Ansicht',
+                'help.chargersTitle': 'Die Ladestations-Übersicht verstehen',
+                'help.chargersHelper': 'Im Bereich Ladestationen siehst du den aktuellen Zustand jeder Ladestation an einem Ort.',
+                'help.chargersBullet1': 'Name und Fahrzeug helfen dir, die Ladestation und das zugeordnete Fahrzeug schnell zu erkennen.',
+                'help.chargersBullet2': 'Der Energiemanager-Modus zeigt, ob schnell, im Eco-Modus oder zeitgesteuert geladen wird.',
+                'help.chargersBullet3': 'Erreichbar zeigt, ob die Ladestation aktuell verfügbar ist.',
+                'help.chargersBullet4': 'Status zeigt, ob die Ladestation bereit ist, ein Fahrzeug verbunden ist oder gerade geladen wird.',
+                'help.chargersBullet5': 'Ladestrom, Ladephasen und aktuelle Leistung beschreiben die momentane Ladeleistung.',
+                'help.chargersBullet6': 'Energie (Sitzung) zeigt, wie viel Energie in der laufenden Sitzung bereits geladen wurde.',
+                'help.history': 'Historie',
+                'help.sessionsTitle': 'Ladevorgänge nutzen',
+                'help.sessionsHelper': 'Im Bereich Ladevorgänge kannst du frühere Ladevorgänge prüfen und exportieren.',
+                'help.sessionsStep1': 'Öffne Ladevorgänge, um die Verlaufsliste zu laden.',
+                'help.sessionsStep2': 'Nutze den Fahrzeugfilter, wenn du nur Vorgänge eines bestimmten Fahrzeugs sehen möchtest.',
+                'help.sessionsStep3': 'Setze Start- und Enddatum, um den Zeitraum einzugrenzen.',
+                'help.sessionsStep4': 'Wähle Ansicht aktualisieren, um die Tabelle neu zu laden.',
+                'help.sessionsStep5': 'Wähle CSV herunterladen, um die aktuell angezeigte Liste zu exportieren.',
+                'help.everyday': 'Alltag',
+                'help.commonTasksTitle': 'Häufige Aufgaben',
+                'help.commonTaskBullet1': 'Prüfen, ob ein Fahrzeug verbunden ist, wartet oder aktiv lädt.',
+                'help.commonTaskBullet2': 'Die aktuelle Leistung und den Ladestrom mehrerer Ladestationen vergleichen.',
+                'help.commonTaskBullet3': 'Sehen, wie viel Energie in der aktuellen Sitzung geladen wurde.',
+                'help.commonTaskBullet4': 'Frühere Ladevorgänge für ein bestimmtes Fahrzeug oder einen Zeitraum nachschlagen.',
+                'help.commonTaskBullet5': 'Die sichtbare Ladehistorie als CSV für die weitere Nutzung herunterladen.',
 
                 'easterEgg.hiddenTreat': 'Verstecktes Extra',
                 'easterEgg.title': 'Grid Dash',
@@ -468,11 +509,15 @@ class DashboardApp {
             });
         }
 
+        if (this.elements.chargerFilter) {
+            this.elements.chargerFilter.addEventListener('change', () => {
+                this.fetchChargingSessions();
+            });
+        }
+
         if (this.elements.carFilter) {
             this.elements.carFilter.addEventListener('change', () => {
-                const carId = this.elements.carFilter.value;
-                if (carId)
-                    this.fetchChargingSessions();
+                this.fetchChargingSessions();
             });
         }
 
@@ -610,57 +655,6 @@ class DashboardApp {
         });
 
         return match ? match.dataset.panel : null;
-    }
-
-    renderStaticTemplates() {
-        const contract = {
-            login: {
-                method: 'POST /evdash/api/login',
-                payload: {
-                    username: 'user',
-                    password: 'secret'
-                }
-            },
-            websocket: {
-                request: {
-                    requestId: 'uuid',
-                    action: 'ActionName',
-                    payload: {}
-                },
-                authenticate: {
-                    requestId: 'uuid',
-                    action: 'authenticate',
-                    payload: {
-                        token: 'issued-token'
-                    }
-                }
-            }
-        };
-
-        const responses = {
-            success: {
-                requestId: 'uuid',
-                success: true,
-                payload: {}
-            },
-            failure: {
-                requestId: 'uuid',
-                success: false,
-                error: 'Error message'
-            },
-            examplePing: {
-                requestId: 'uuid',
-                success: true,
-                payload: {
-                    timestamp: '2025-01-12T09:30:00Z'
-                }
-            }
-        };
-
-        if (this.elements.requestTemplate)
-            this.elements.requestTemplate.textContent = JSON.stringify(contract, null, 2);
-        if (this.elements.responseTemplate)
-            this.elements.responseTemplate.textContent = JSON.stringify(responses, null, 2);
     }
 
     restoreSession() {
@@ -881,14 +875,10 @@ class DashboardApp {
             data = JSON.parse(event.data);
         } catch (error) {
             console.warn('Failed to parse WebSocket message', error);
-            this.elements.incomingMessage.textContent = `Failed to parse message: ${error.message}`;
             return;
         }
 
         console.log('<--', data);
-
-        if (this.elements.incomingMessage)
-            this.elements.incomingMessage.textContent = JSON.stringify(data, null, 2);
 
         let handled = false;
         if (data.requestId && this.pendingRequests.has(data.requestId)) {
@@ -1112,6 +1102,10 @@ class DashboardApp {
 
     fetchChargingSessions() {
         const payload = {};
+        const chargerId = this.elements.chargerFilter ? this.elements.chargerFilter.value : '';
+        if (chargerId)
+            payload.chargerId = chargerId;
+
         const carId = this.elements.carFilter ? this.elements.carFilter.value : '';
         if (carId)
             payload.carId = carId;
@@ -1154,6 +1148,7 @@ class DashboardApp {
         const merged = { ...previous, ...charger };
         merged.thingId = key;
         this.chargers.set(key, merged);
+        this.updateChargerSelector();
         this.syncChargerRow(merged, !hasExisting);
     }
 
@@ -1376,6 +1371,7 @@ class DashboardApp {
         if (detailsRow && detailsRow.parentElement)
             detailsRow.parentElement.removeChild(detailsRow);
 
+        this.updateChargerSelector();
         this.toggleChargerEmptyState();
     }
 
@@ -1417,6 +1413,37 @@ class DashboardApp {
             return source.id;
 
         return null;
+    }
+
+    updateChargerSelector() {
+        const select = this.elements.chargerFilter;
+        if (!select)
+            return;
+
+        const currentValue = select.value;
+        while (select.options.length > 0)
+            select.remove(0);
+
+        const defaultOption = document.createElement('option');
+        defaultOption.value = '';
+        defaultOption.textContent = this.t('sessions.allChargers');
+        select.appendChild(defaultOption);
+
+        const chargers = Array.from(this.chargers.values())
+            .sort((a, b) => (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' }));
+
+        chargers.forEach(charger => {
+            const option = document.createElement('option');
+            option.value = this.getChargerKey(charger) || '';
+            option.textContent = charger.name || option.value;
+            select.appendChild(option);
+        });
+
+        const hasValue = currentValue && select.querySelector
+            && typeof CSS !== 'undefined' && CSS.escape
+            && select.querySelector(`option[value="${CSS.escape(currentValue)}"]`);
+
+        select.value = hasValue ? currentValue : '';
     }
 
     toggleChargerEmptyState() {
@@ -1651,21 +1678,6 @@ class DashboardApp {
         this.sessions = normalizedSessions;
 
         this.renderChargingSessionsTable(normalizedSessions, fallbackMessage);
-
-        if (!this.elements.chargingSessionsOutput)
-            return;
-
-        if (!normalizedSessions.length) {
-            this.elements.chargingSessionsOutput.textContent = fallbackMessage || this.t('sessions.noneFound');
-            return;
-        }
-
-        try {
-            this.elements.chargingSessionsOutput.textContent = JSON.stringify(normalizedSessions, null, 2);
-        } catch (error) {
-            console.warn('Failed to render charging sessions', error);
-            this.elements.chargingSessionsOutput.textContent = this.t('sessions.displayFailed');
-        }
     }
 
     renderChargingSessionsTable(sessions, fallbackMessage) {
@@ -1675,8 +1687,9 @@ class DashboardApp {
             return;
 
         const normalizedSessions = Array.isArray(sessions) ? sessions : [];
-        const filteredSessions = this.filterChargingSessionsByTimeRange(normalizedSessions);
+        const filteredSessions = this.filterVisibleChargingSessions(normalizedSessions);
         const hasTimeRangeFilter = this.hasChargingSessionTimeRangeFilter();
+        const hasAdditionalFilter = this.hasChargingSessionAdditionalFilter();
 
         const rows = body.querySelectorAll('tr[data-session-id]');
         rows.forEach(row => {
@@ -1690,8 +1703,10 @@ class DashboardApp {
                 if (cell) {
                     if (!normalizedSessions.length) {
                         cell.textContent = fallbackMessage || this.t('sessions.emptyFetched');
-                    } else if (hasTimeRangeFilter) {
+                    } else if (hasTimeRangeFilter && !hasAdditionalFilter) {
                         cell.textContent = this.t('sessions.noneInRange');
+                    } else if (hasTimeRangeFilter || hasAdditionalFilter) {
+                        cell.textContent = this.t('sessions.noneMatchingFilters');
                     } else {
                         cell.textContent = fallbackMessage || this.t('sessions.noneFound');
                     }
@@ -1713,6 +1728,12 @@ class DashboardApp {
         const start = this.elements.sessionStartFilter ? this.elements.sessionStartFilter.value : '';
         const end = this.elements.sessionEndFilter ? this.elements.sessionEndFilter.value : '';
         return !!start || !!end;
+    }
+
+    hasChargingSessionAdditionalFilter() {
+        const chargerId = this.elements.chargerFilter ? this.elements.chargerFilter.value : '';
+        const carId = this.elements.carFilter ? this.elements.carFilter.value : '';
+        return !!chargerId || !!carId;
     }
 
     getChargingSessionTimeRangeMs() {
@@ -1804,6 +1825,50 @@ class DashboardApp {
         });
     }
 
+    filterChargingSessionsBySelectedCharger(sessions) {
+        if (!Array.isArray(sessions) || !sessions.length)
+            return [];
+
+        const chargerId = this.elements.chargerFilter ? this.elements.chargerFilter.value : '';
+        if (!chargerId)
+            return sessions;
+
+        const selectedCharger = this.chargers.has(chargerId) ? this.chargers.get(chargerId) : null;
+        const selectedName = selectedCharger && selectedCharger.name ? String(selectedCharger.name).trim() : '';
+        const normalizedSelectedId = this.normalizeSessionChargerIdentifier(chargerId);
+
+        return sessions.filter(session => {
+            if (!session || typeof session !== 'object')
+                return false;
+
+            const candidateIds = [
+                session.chargerId,
+                session.chargerThingId,
+                session.thingId,
+                session.evChargerId
+            ];
+
+            if (candidateIds.some(value => this.normalizeSessionChargerIdentifier(value) === normalizedSelectedId))
+                return true;
+
+            const sessionChargerName = session.chargerName ? String(session.chargerName).trim() : '';
+            return !!selectedName && !!sessionChargerName
+                && sessionChargerName.localeCompare(selectedName, undefined, { sensitivity: 'base' }) === 0;
+        });
+    }
+
+    filterVisibleChargingSessions(sessions) {
+        const byCharger = this.filterChargingSessionsBySelectedCharger(sessions);
+        return this.filterChargingSessionsByTimeRange(byCharger);
+    }
+
+    normalizeSessionChargerIdentifier(value) {
+        if (value === null || value === undefined)
+            return '';
+
+        return String(value).trim().replace(/[{}]/g, '').toLowerCase();
+    }
+
     buildChargingSessionRow(session) {
         const row = document.createElement('tr');
         row.dataset.sessionId = session && session.sessionId ? session.sessionId : '';
@@ -1888,7 +1953,7 @@ class DashboardApp {
     }
 
     downloadChargingSessionsCsv() {
-        const sessions = this.filterChargingSessionsByTimeRange(this.sessions);
+        const sessions = this.filterVisibleChargingSessions(this.sessions);
         if (!sessions.length) {
             console.warn('No charging sessions to download.');
             return;
@@ -1900,6 +1965,9 @@ class DashboardApp {
             return;
         }
 
+        const chargerId = this.elements.chargerFilter ? this.elements.chargerFilter.value : '';
+        const chargerName = chargerId && this.chargers.has(chargerId) ? this.chargers.get(chargerId).name : '';
+        const chargerSuffix = chargerName ? `-${this.sanitizeFilename(chargerName)}` : '';
         const carId = this.elements.carFilter ? this.elements.carFilter.value : '';
         const carName = carId && this.cars.has(carId) ? this.cars.get(carId).name : '';
         const carSuffix = carName ? `-${this.sanitizeFilename(carName)}` : '';
@@ -1907,7 +1975,7 @@ class DashboardApp {
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
-        link.download = `charging-sessions${carSuffix}-${new Date().toISOString().slice(0, 10)}.csv`;
+        link.download = `charging-sessions${chargerSuffix}${carSuffix}-${new Date().toISOString().slice(0, 10)}.csv`;
         document.body.appendChild(link);
         link.click();
         setTimeout(() => {
