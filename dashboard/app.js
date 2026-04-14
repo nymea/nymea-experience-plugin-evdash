@@ -1644,12 +1644,15 @@ class DashboardApp {
             return `${day}.${month}.${year} ${hours}:${minutes}:${seconds}`;
         }
 
-        if (key === 'currentPower' || key === 'sessionEnergy') {
+        if (key === 'chargingCurrent' || key === 'currentPower' || key === 'sessionEnergy') {
             const numericValue = this.coerceFiniteNumber(value);
             if (numericValue === null)
                 return typeof value === 'string' ? value : '—';
 
-            const unit = key === 'currentPower' ? 'kW' : 'kWh';
+            const unit = key === 'chargingCurrent' ? 'A' : (key === 'currentPower' ? 'kW' : 'kWh');
+            if (key === 'chargingCurrent')
+                return this.formatNumber(numericValue, unit);
+
             if (key === 'currentPower')
                 return numericValue >= 0 && numericValue < 50 ? `0 ${unit}` : this.formatNumberMaxDecimals(numericValue / 1000, unit, 2);
 
