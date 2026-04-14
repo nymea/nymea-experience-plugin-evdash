@@ -718,7 +718,7 @@
                 </button>
                 <button type="button" class="side-nav-button" data-panel-target="help" aria-pressed="false">
                     <span data-i18n="sidebar.help">Help</span>
-                    <span class="side-nav-subtitle" data-i18n="sidebar.helpSubtitle">API concept & debug logs</span>
+                    <span class="side-nav-subtitle" data-i18n="sidebar.helpSubtitle">How to use the dashboard</span>
                 </button>
             </nav>
             <div class="side-panel-footer">
@@ -769,6 +769,10 @@
                                 <h2 id="chargingSessionsTitle" data-i18n="sessions.title">Charging sessions</h2>
                             </div>
                             <div class="action-row">
+                                <label class="sr-only" for="chargerFilter" data-i18n="sessions.filterCharger">Charger</label>
+                                <select id="chargerFilter" name="chargerFilter">
+                                    <option value="" data-i18n="sessions.allChargers">All chargers</option>
+                                </select>
                                 <label class="sr-only" for="carFilter" data-i18n="sessions.filterCar">Car</label>
                                 <select id="carFilter" name="carFilter">
                                     <option value="" data-i18n="sessions.allCars">All cars</option>
@@ -781,7 +785,7 @@
                                 <button type="button" id="downloadSessionsButton" data-i18n="sessions.downloadCsv">Download CSV</button>
                             </div>
                         </div>
-                        <p class="helper-text" data-i18n="sessions.helper">Optionally filter charging sessions by car and time range before downloading.</p>
+                        <p class="helper-text" data-i18n="sessions.helper">Optionally filter charging sessions by charger, car and time range before downloading.</p>
                         <div class="table-wrapper">
                             <table class="data-table sessions-table">
                                 <thead>
@@ -809,56 +813,80 @@
                         <div class="card-header">
                             <div>
                                 <p class="eyebrow" data-i18n="help.guides">Guides</p>
-                                <h2 id="helpTitle" data-i18n="help.title">API Contract</h2>
+                                <h2 id="helpTitle" data-i18n="help.title">Using EV Dash</h2>
                             </div>
-                            <p class="helper-text" data-i18n="help.helper" data-i18n-mode="html">Use <code>app.sendAction(action, payload)</code> after authenticating.</p>
+                            <p class="helper-text" data-i18n="help.helper">This page explains the main areas of the dashboard and the most common actions.</p>
                         </div>
                         <div class="grid-two-column">
                             <div>
-                                <h3 data-i18n="help.requestTemplate">Request template</h3>
-                                <pre id="requestTemplate"></pre>
+                                <h3 data-i18n="help.gettingStartedTitle">Getting started</h3>
+                                <ol>
+                                    <li data-i18n="help.gettingStartedStep1">Sign in with your user name and password.</li>
+                                    <li data-i18n="help.gettingStartedStep2">Wait until the status in the header changes to Connected.</li>
+                                    <li data-i18n="help.gettingStartedStep3">Open the Chargers section to see the live status of all available chargers.</li>
+                                    <li data-i18n="help.gettingStartedStep4">Select a charger row to open more details for that charger.</li>
+                                </ol>
                             </div>
                             <div>
-                                <h3 data-i18n="help.responses">Responses</h3>
-                                <pre id="responseTemplate"></pre>
+                                <h3 data-i18n="help.connectionTitle">Connection status</h3>
+                                <ul>
+                                    <li data-i18n="help.connectionBullet1">Connected means live values are up to date.</li>
+                                    <li data-i18n="help.connectionBullet2">Connecting or Authenticating means the dashboard is restoring access.</li>
+                                    <li data-i18n="help.connectionBullet3">Disconnected or Connection error means live updates are temporarily unavailable.</li>
+                                    <li data-i18n="help.connectionBullet4">If needed, sign in again or ask your administrator for support.</li>
+                                </ul>
                             </div>
                         </div>
-                    </article>
-
-                    <article class="card" aria-live="polite">
-                        <div class="card-header">
-                            <div>
-                                <p class="eyebrow" data-i18n="help.diagnostics">Diagnostics</p>
-                                <h2 data-i18n="help.lastMessage">Last WebSocket message</h2>
-                            </div>
-                            <p class="helper-text" data-i18n="help.diagnosticsHelper">Sign in to reuse the stored session and inspect backend payloads.</p>
-                        </div>
-                        <pre id="incomingMessage" data-i18n="help.noMessagesYet">No messages received yet.</pre>
                     </article>
 
                     <article class="card">
                         <div class="card-header">
                             <div>
-                                <p class="eyebrow" data-i18n="help.debugging">Debugging</p>
-                                <h2 data-i18n="help.sessionsPayload">Charging sessions payload</h2>
+                                <p class="eyebrow" data-i18n="help.liveView">Live view</p>
+                                <h2 data-i18n="help.chargersTitle">Understand the charger overview</h2>
                             </div>
-                            <p class="helper-text" data-i18n="help.sessionsPayloadHelper">Raw session JSON for troubleshooting.</p>
+                            <p class="helper-text" data-i18n="help.chargersHelper">The Chargers section shows the current state of each charger in one place.</p>
                         </div>
-                        <pre id="chargingSessionsOutput" data-i18n="sessions.emptyFetched">No charging sessions fetched yet.</pre>
+                        <ul>
+                            <li data-i18n="help.chargersBullet1">Name and Car help you identify the charger and the assigned vehicle.</li>
+                            <li data-i18n="help.chargersBullet2">Energy manager mode shows whether charging is running in quick, eco or timed operation.</li>
+                            <li data-i18n="help.chargersBullet3">Reachable shows whether the charger is currently available.</li>
+                            <li data-i18n="help.chargersBullet4">Status shows whether the charger is ready, a car is connected or charging is active.</li>
+                            <li data-i18n="help.chargersBullet5">Charging current, phases and current power describe the live charging performance.</li>
+                            <li data-i18n="help.chargersBullet6">Session energy shows how much energy has been delivered in the current charging session.</li>
+                        </ul>
                     </article>
 
                     <article class="card">
                         <div class="card-header">
                             <div>
-                                <p class="eyebrow" data-i18n="help.reference">Reference</p>
-                                <h2 data-i18n="help.chargerTableBasics">Charger table basics</h2>
+                                <p class="eyebrow" data-i18n="help.history">History</p>
+                                <h2 data-i18n="help.sessionsTitle">Use charging sessions</h2>
+                            </div>
+                            <p class="helper-text" data-i18n="help.sessionsHelper">The Charging sessions section helps you review past charging activity and export it.</p>
+                        </div>
+                        <ol>
+                            <li data-i18n="help.sessionsStep1">Open Charging sessions to load the session history.</li>
+                            <li data-i18n="help.sessionsStep2">Use the car filter if you only want to see sessions for one vehicle.</li>
+                            <li data-i18n="help.sessionsStep3">Set a start date and end date to narrow the time range.</li>
+                            <li data-i18n="help.sessionsStep4">Select Refresh view to update the table.</li>
+                            <li data-i18n="help.sessionsStep5">Select Download CSV to export the currently shown session list.</li>
+                        </ol>
+                    </article>
+
+                    <article class="card">
+                        <div class="card-header">
+                            <div>
+                                <p class="eyebrow" data-i18n="help.everyday">Everyday tasks</p>
+                                <h2 data-i18n="help.commonTasksTitle">Common things you can do</h2>
                             </div>
                         </div>
                         <ul>
-                            <li data-i18n="help.referenceBullet1">The dashboard keeps one row per charger ID and updates it with backend notifications.</li>
-                            <li data-i18n="help.referenceBullet2" data-i18n-mode="html">Columns follow the order defined by <code>EvDashEngine::packCharger</code> so new properties show up automatically.</li>
-                            <li data-i18n="help.referenceBullet3">Branding (colours, fonts) is managed via CSS variables at the top of this file for easy overrides.</li>
-                            <li data-i18n="help.referenceBullet4">Select a charger row to expand additional charger details.</li>
+                            <li data-i18n="help.commonTaskBullet1">Check whether a vehicle is connected, waiting or actively charging.</li>
+                            <li data-i18n="help.commonTaskBullet2">Compare the live power and charging current of multiple chargers.</li>
+                            <li data-i18n="help.commonTaskBullet3">See how much energy was delivered during the current session.</li>
+                            <li data-i18n="help.commonTaskBullet4">Look up earlier charging sessions for a specific car or time period.</li>
+                            <li data-i18n="help.commonTaskBullet5">Download the visible charging history as a CSV file for further use.</li>
                         </ul>
                     </article>
                 </section>
