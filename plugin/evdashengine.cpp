@@ -321,7 +321,8 @@ void EvDashEngine::stopWebSocketServer()
     if (m_webSocketServer->isListening())
         m_webSocketServer->close();
 
-    for (QWebSocket *client : qAsConst(m_clients)) {
+    const QList<QWebSocket *> clients = m_clients;
+    for (QWebSocket *client : clients) {
         if (client->state() == QAbstractSocket::ConnectedState)
             client->close(QWebSocketProtocol::CloseCodeGoingAway, QStringLiteral("Server shutting down"));
 
@@ -482,7 +483,8 @@ void EvDashEngine::sendReply(QWebSocket *socket, QJsonObject response) const
 void EvDashEngine::sendNotification(const QString &notification, QJsonObject payload) const
 {
     // Send to all active clients
-    for (QWebSocket *client : qAsConst(m_clients)) {
+    const QList<QWebSocket *> clients = m_clients;
+    for (QWebSocket *client : clients) {
         if (m_authenticatedClients.value(client).isEmpty())
             continue;
 
