@@ -25,6 +25,7 @@ class DashboardApp {
             downloadSessionsButton: document.getElementById('downloadSessionsButton'),
             chargerFilter: document.getElementById('chargerFilter'),
             carFilter: document.getElementById('carFilter'),
+            userFilter: document.getElementById('userFilter'),
             sessionStartFilter: document.getElementById('sessionStartFilter'),
             sessionEndFilter: document.getElementById('sessionEndFilter'),
             chargingSessionsTableBody: document.getElementById('chargingSessionsTableBody'),
@@ -78,6 +79,7 @@ class DashboardApp {
         this.toggleChargerEmptyState();
         this.updateChargerSelector();
         this.updateCarSelector();
+        this.updateUserSelector([]);
     }
 
     resolveLocale() {
@@ -155,14 +157,18 @@ class DashboardApp {
                 'sessions.allChargers': 'All chargers',
                 'sessions.filterCar': 'Car',
                 'sessions.allCars': 'All cars',
+                'sessions.filterUser': 'User',
+                'sessions.allUsers': 'All users',
                 'sessions.filterStartDate': 'Start date',
                 'sessions.filterEndDate': 'End date',
                 'sessions.fetch': 'Refresh view',
                 'sessions.downloadCsv': 'Download CSV',
-                'sessions.helper': 'Optionally filter charging sessions by charger, car and time range before downloading.',
+                'sessions.helper': 'Optionally filter charging sessions by charger, car, user and time range before downloading.',
                 'sessions.columns.name': 'Name',
                 'sessions.columns.charger': 'Charger',
                 'sessions.columns.car': 'Car',
+                'sessions.columns.startedBy': 'Started by',
+                'sessions.columns.rfidTag': 'RFID tag',
                 'sessions.columns.start': 'Start',
                 'sessions.columns.end': 'End',
                 'sessions.columns.energy': 'Energy (kWh)',
@@ -175,6 +181,7 @@ class DashboardApp {
                 'sessions.displayFailed': 'Unable to display charging sessions.',
                 'sessions.startBeforeEnd': 'Start date must be earlier than end date.',
                 'sessions.sessionIdLabel': 'Session {id}',
+                'sessions.rfidIconLabel': 'RFID',
 
                 'help.guides': 'Guides',
                 'help.title': 'Using EV Dash',
@@ -269,6 +276,10 @@ class DashboardApp {
                 'csv.chargerName': 'Charger name',
                 'csv.chargerSerialNumber': 'Charger serial number',
                 'csv.car': 'Car',
+                'csv.startedBy': 'Started by',
+                'csv.source': 'Source',
+                'csv.authorizedUser': 'RFID user',
+                'csv.authorizedTag': 'RFID tag',
                 'csv.start': 'Start',
                 'csv.end': 'End',
                 'csv.energyKwh': 'Energy [kWh]',
@@ -326,14 +337,18 @@ class DashboardApp {
                 'sessions.allChargers': 'Alle Ladestationen',
                 'sessions.filterCar': 'Fahrzeug',
                 'sessions.allCars': 'Alle Fahrzeuge',
+                'sessions.filterUser': 'Benutzer',
+                'sessions.allUsers': 'Alle Benutzer',
                 'sessions.filterStartDate': 'Startdatum',
                 'sessions.filterEndDate': 'Enddatum',
                 'sessions.fetch': 'Ansicht aktualisieren',
                 'sessions.downloadCsv': 'CSV herunterladen',
-                'sessions.helper': 'Optional nach Ladestation, Fahrzeug und Zeitraum filtern, bevor du die CSV herunterlädst.',
+                'sessions.helper': 'Optional nach Ladestation, Fahrzeug, Benutzer und Zeitraum filtern, bevor du die CSV herunterlädst.',
                 'sessions.columns.name': 'Name',
                 'sessions.columns.charger': 'Ladestation',
                 'sessions.columns.car': 'Fahrzeug',
+                'sessions.columns.startedBy': 'Gestartet von',
+                'sessions.columns.rfidTag': 'RFID-Tag',
                 'sessions.columns.start': 'Start',
                 'sessions.columns.end': 'Ende',
                 'sessions.columns.energy': 'Energie (kWh)',
@@ -346,6 +361,7 @@ class DashboardApp {
                 'sessions.displayFailed': 'Ladevorgänge können nicht angezeigt werden.',
                 'sessions.startBeforeEnd': 'Das Startdatum muss vor dem Enddatum liegen.',
                 'sessions.sessionIdLabel': 'Sitzung {id}',
+                'sessions.rfidIconLabel': 'RFID',
 
                 'help.guides': 'Leitfäden',
                 'help.title': 'EV Dash verwenden',
@@ -440,6 +456,10 @@ class DashboardApp {
                 'csv.chargerName': 'Ladestationsname',
                 'csv.chargerSerialNumber': 'Seriennummer der Ladestation',
                 'csv.car': 'Fahrzeug',
+                'csv.startedBy': 'Gestartet von',
+                'csv.source': 'Quelle',
+                'csv.authorizedUser': 'RFID-Benutzer',
+                'csv.authorizedTag': 'RFID-Tag',
                 'csv.start': 'Start',
                 'csv.end': 'Ende',
                 'csv.energyKwh': 'Energie [kWh]',
@@ -518,6 +538,12 @@ class DashboardApp {
         if (this.elements.carFilter) {
             this.elements.carFilter.addEventListener('change', () => {
                 this.fetchChargingSessions();
+            });
+        }
+
+        if (this.elements.userFilter) {
+            this.elements.userFilter.addEventListener('change', () => {
+                this.renderChargingSessionsTable(this.sessions);
             });
         }
 
@@ -1544,6 +1570,104 @@ class DashboardApp {
         select.value = hasValue ? currentValue : '';
     }
 
+    updateUserSelector(sessions) {
+        const select = this.elements.userFilter;
+        if (!select)
+            return;
+
+        const currentValue = select.value;
+        while (select.options.length > 0)
+            select.remove(0);
+
+        const defaultOption = document.createElement('option');
+        defaultOption.value = '';
+        defaultOption.textContent = this.t('sessions.allUsers');
+        select.appendChild(defaultOption);
+
+        const options = this.collectSessionUserFilterOptions(sessions);
+        options.forEach(entry => {
+            const option = document.createElement('option');
+            option.value = entry.value;
+            option.textContent = entry.label;
+            select.appendChild(option);
+        });
+
+        const hasValue = currentValue && Array.from(select.options).some(option => option.value === currentValue);
+        select.value = hasValue ? currentValue : '';
+    }
+
+    collectSessionUserFilterOptions(sessions) {
+        if (!Array.isArray(sessions) || !sessions.length)
+            return [];
+
+        const entries = new Map();
+        sessions.forEach(session => {
+            if (!session || typeof session !== 'object')
+                return;
+
+            const actorName = this.formatSessionText(session.actorName);
+            if (actorName) {
+                const value = this.createSessionUserFilterValue('actor', actorName);
+                if (!entries.has(value)) {
+                    entries.set(value, {
+                        value,
+                        label: actorName,
+                        sortKey: actorName.toLowerCase(),
+                        typeOrder: 0
+                    });
+                }
+            }
+
+            const authorizedUser = this.formatSessionText(session.authorizedUser);
+            if (authorizedUser) {
+                const value = this.createSessionUserFilterValue('rfid', authorizedUser);
+                if (!entries.has(value)) {
+                    entries.set(value, {
+                        value,
+                        label: authorizedUser,
+                        sortKey: authorizedUser.toLowerCase(),
+                        typeOrder: 1
+                    });
+                }
+            }
+        });
+
+        return Array.from(entries.values()).sort((a, b) => {
+            const nameCompare = a.sortKey.localeCompare(b.sortKey, undefined, { sensitivity: 'base' });
+            if (nameCompare !== 0)
+                return nameCompare;
+            return a.typeOrder - b.typeOrder;
+        });
+    }
+
+    createSessionUserFilterValue(type, name) {
+        return `${type}:${encodeURIComponent(this.normalizeSessionUserName(name))}`;
+    }
+
+    parseSessionUserFilterValue(value) {
+        if (!value || typeof value !== 'string')
+            return null;
+
+        const separator = value.indexOf(':');
+        if (separator <= 0)
+            return null;
+
+        const type = value.slice(0, separator);
+        if (type !== 'actor' && type !== 'rfid')
+            return null;
+
+        const encodedName = value.slice(separator + 1);
+        let name = '';
+        try {
+            name = decodeURIComponent(encodedName);
+        } catch (error) {
+            name = encodedName;
+        }
+
+        name = this.normalizeSessionUserName(name);
+        return name ? { type, name } : null;
+    }
+
     formatNumber(value, unit) {
         if (!Number.isFinite(value))
             return '—';
@@ -1680,6 +1804,7 @@ class DashboardApp {
         const normalizedSessions = Array.isArray(sessions) ? sessions : [];
         this.sessions = normalizedSessions;
 
+        this.updateUserSelector(normalizedSessions);
         this.renderChargingSessionsTable(normalizedSessions, fallbackMessage);
     }
 
@@ -1736,7 +1861,8 @@ class DashboardApp {
     hasChargingSessionAdditionalFilter() {
         const chargerId = this.elements.chargerFilter ? this.elements.chargerFilter.value : '';
         const carId = this.elements.carFilter ? this.elements.carFilter.value : '';
-        return !!chargerId || !!carId;
+        const user = this.elements.userFilter ? this.elements.userFilter.value : '';
+        return !!chargerId || !!carId || !!user;
     }
 
     getChargingSessionTimeRangeMs() {
@@ -1862,7 +1988,30 @@ class DashboardApp {
 
     filterVisibleChargingSessions(sessions) {
         const byCharger = this.filterChargingSessionsBySelectedCharger(sessions);
-        return this.filterChargingSessionsByTimeRange(byCharger);
+        const byUser = this.filterChargingSessionsBySelectedUser(byCharger);
+        return this.filterChargingSessionsByTimeRange(byUser);
+    }
+
+    filterChargingSessionsBySelectedUser(sessions) {
+        if (!Array.isArray(sessions) || !sessions.length)
+            return [];
+
+        const selected = this.parseSessionUserFilterValue(this.elements.userFilter ? this.elements.userFilter.value : '');
+        if (!selected)
+            return sessions;
+
+        return sessions.filter(session => {
+            if (!session || typeof session !== 'object')
+                return false;
+
+            if (selected.type === 'actor')
+                return this.normalizeSessionUserName(session.actorName) === selected.name;
+
+            if (selected.type === 'rfid')
+                return this.normalizeSessionUserName(session.authorizedUser) === selected.name;
+
+            return false;
+        });
     }
 
     normalizeSessionChargerIdentifier(value) {
@@ -1872,11 +2021,18 @@ class DashboardApp {
         return String(value).trim().replace(/[{}]/g, '').toLowerCase();
     }
 
+    normalizeSessionUserName(value) {
+        if (value === null || value === undefined)
+            return '';
+
+        return String(value).trim().toLowerCase();
+    }
+
     buildChargingSessionRow(session) {
         const row = document.createElement('tr');
         row.dataset.sessionId = session && session.sessionId ? session.sessionId : '';
 
-        const cells = [
+        const textCells = [
             this.deriveSessionName(session),
             session && session.chargerName ? session.chargerName : '—',
             session && session.carName ? session.carName : '—',
@@ -1885,15 +2041,89 @@ class DashboardApp {
             this.formatSessionEnergy(session)
         ];
 
-        cells.forEach((value, index) => {
+        textCells.slice(0, 3).forEach(value => {
             const cell = document.createElement('td');
-            if (index === 5)
+            cell.textContent = value;
+            row.appendChild(cell);
+        });
+
+        row.appendChild(this.buildStartedByCell(session));
+        row.appendChild(this.buildRfidTagCell(session));
+
+        textCells.slice(3).forEach((value, index) => {
+            const cell = document.createElement('td');
+            if (index === 2)
                 cell.classList.add('numeric');
             cell.textContent = value;
             row.appendChild(cell);
         });
 
         return row;
+    }
+
+    buildStartedByCell(session) {
+        const cell = document.createElement('td');
+        const actorName = this.formatSessionText(session ? session.actorName : null);
+        if (!actorName) {
+            cell.textContent = '—';
+            return cell;
+        }
+
+        const wrapper = document.createElement('span');
+        wrapper.className = 'session-attribution';
+        wrapper.textContent = actorName;
+
+        const sourceName = this.formatSessionText(session ? session.sourceName : null);
+        if (sourceName)
+            wrapper.title = sourceName;
+
+        cell.appendChild(wrapper);
+        return cell;
+    }
+
+    buildRfidTagCell(session) {
+        const cell = document.createElement('td');
+        const authorizedUser = this.formatSessionText(session ? session.authorizedUser : null);
+        const authorizedTag = this.formatSessionText(session ? session.authorizedTag : null);
+        if (!authorizedUser && !authorizedTag) {
+            cell.textContent = '—';
+            return cell;
+        }
+
+        const wrapper = document.createElement('span');
+        wrapper.className = 'rfid-attribution';
+        wrapper.title = this.t('sessions.rfidIconLabel');
+        wrapper.appendChild(this.createRfidIcon());
+
+        const label = document.createElement('span');
+        label.textContent = [authorizedUser, authorizedTag].filter(Boolean).join(' · ');
+        wrapper.appendChild(label);
+
+        cell.appendChild(wrapper);
+        return cell;
+    }
+
+    createRfidIcon() {
+        const namespace = 'http://www.w3.org/2000/svg';
+        const svg = document.createElementNS(namespace, 'svg');
+        svg.setAttribute('viewBox', '0 -960 960 960');
+        svg.setAttribute('aria-label', this.t('sessions.rfidIconLabel'));
+        svg.setAttribute('role', 'img');
+        svg.classList.add('rfid-icon');
+
+        const path = document.createElementNS(namespace, 'path');
+        path.setAttribute('fill', 'currentColor');
+        path.setAttribute('d', 'M336-374q9-24 14.5-50.5T356-480q0-29-5.5-55.5T336-586l-74 30q6 18 10 37t4 39q0 20-4 39t-10 37l74 30Zm128 54q17-38 24.5-78t7.5-82q0-42-7.5-82T464-640l-74 30q14 30 20 62.5t6 67.5q0 35-6 67.5T390-350l74 30Zm130 54q21-50 31.5-103.5T636-480q0-57-10.5-110.5T594-694l-74 32q18 42 27 88t9 94q0 48-9 94t-27 88l74 32ZM480-80q-83 0-156-31.5T197-197q-54-54-85.5-127T80-480q0-83 31.5-156T197-763q54-54 127-85.5T480-880q83 0 156 31.5T763-763q54 54 85.5 127T880-480q0 83-31.5 156T763-197q-54 54-127 85.5T480-80Zm0-80q134 0 227-93t93-227q0-134-93-227t-227-93q-134 0-227 93t-93 227q0 134 93 227t227 93Zm0-320Z');
+        svg.appendChild(path);
+        return svg;
+    }
+
+    formatSessionText(value) {
+        if (value === null || value === undefined)
+            return '';
+
+        const text = String(value).trim();
+        return text.length ? text : '';
     }
 
     deriveSessionName(session) {
@@ -1974,17 +2204,28 @@ class DashboardApp {
         const carId = this.elements.carFilter ? this.elements.carFilter.value : '';
         const carName = carId && this.cars.has(carId) ? this.cars.get(carId).name : '';
         const carSuffix = carName ? `-${this.sanitizeFilename(carName)}` : '';
+        const userSuffix = this.getSelectedSessionUserFilenameSuffix();
         const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
-        link.download = `charging-sessions${chargerSuffix}${carSuffix}-${new Date().toISOString().slice(0, 10)}.csv`;
+        link.download = `charging-sessions${chargerSuffix}${carSuffix}${userSuffix}-${new Date().toISOString().slice(0, 10)}.csv`;
         document.body.appendChild(link);
         link.click();
         setTimeout(() => {
             document.body.removeChild(link);
             URL.revokeObjectURL(url);
         }, 0);
+    }
+
+    getSelectedSessionUserFilenameSuffix() {
+        const select = this.elements.userFilter;
+        if (!select || !select.value)
+            return '';
+
+        const selectedOption = select.options[select.selectedIndex];
+        const label = selectedOption && selectedOption.textContent ? selectedOption.textContent : '';
+        return label ? `-${this.sanitizeFilename(label)}` : '';
     }
 
     buildSessionsCsv(sessions) {
@@ -1996,6 +2237,10 @@ class DashboardApp {
             { label: this.t('csv.chargerName'), key: 'chargerName' },
             { label: this.t('csv.chargerSerialNumber'), key: 'chargerSerialNumber' },
             { label: this.t('csv.car'), key: 'carName' },
+            { label: this.t('csv.startedBy'), key: 'actorName' },
+            { label: this.t('csv.source'), key: 'sourceName' },
+            { label: this.t('csv.authorizedUser'), key: 'authorizedUser' },
+            { label: this.t('csv.authorizedTag'), key: 'authorizedTag' },
             { label: this.t('csv.start'), key: 'startTimestamp', formatter: value => this.formatCsvTimestamp(value) },
             { label: this.t('csv.end'), key: 'endTimestamp', formatter: value => this.formatCsvTimestamp(value) },
             { label: this.t('csv.energyKwh'), key: 'sessionEnergy' },
