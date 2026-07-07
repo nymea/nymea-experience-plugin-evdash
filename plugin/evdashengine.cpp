@@ -577,6 +577,15 @@ QJsonObject EvDashEngine::packCharger(Thing *charger) const
     if (charger->hasState("digitalInputMode"))
         chargerObject.insert("digitalInputMode", charger->stateValue("digitalInputMode").toInt());
 
+    if (charger->hasState("authorizedUsername"))
+        chargerObject.insert("authorizedUsername", charger->stateValue("authorizedUsername").toString());
+
+    if (charger->hasState("authorizedDisplayName"))
+        chargerObject.insert("authorizedDisplayName", charger->stateValue("authorizedDisplayName").toString());
+
+    if (charger->hasState("authorizedTagHash"))
+        chargerObject.insert("authorizedTagHash", charger->stateValue("authorizedTagHash").toString());
+
     return chargerObject;
 }
 

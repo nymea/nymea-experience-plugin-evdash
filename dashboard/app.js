@@ -1,7 +1,7 @@
 class DashboardApp {
     constructor() {
-        this.locale = this.resolveLocale();
-        this.translations = this.buildTranslations();
+        this.translations = window.EvDashTranslations || {};
+        this.locale = this.resolveLocale(Object.keys(this.translations));
 
         this.elements = {
             loginOverlay: document.getElementById('loginOverlay'),
@@ -50,14 +50,12 @@ class DashboardApp {
         this.activePanel = null;
         this.easterEggClickCount = 0;
         this.easterEggClickResetTimer = null;
-        this.easterEggGame = {
-            running: false,
-            frameId: null,
-            player: { x: 30, y: 30, size: 16, speed: 3.2 },
-            target: { x: 200, y: 140, size: 10 },
-            score: 0,
-            keys: {}
-        };
+        this.easterEggGame = new EasterEggGame({
+            overlay: this.elements.easterEggOverlay,
+            canvas: this.elements.easterEggCanvas,
+            closeButton: this.elements.easterEggClose,
+            scoreLabel: this.elements.easterEggScore
+        }, (key, variables) => this.t(key, variables));
         this.chargerColumns = [
             { key: 'id', label: 'ID', hidden: true },
             { key: 'name', label: 'Name' },
@@ -72,7 +70,6 @@ class DashboardApp {
         ];
 
         this.translateDocument();
-        this.updateEasterEggScore();
         this.attachEventListeners();
         this.initializePanelNavigation();
         this.restoreSession();
@@ -82,12 +79,19 @@ class DashboardApp {
         this.updateUserSelector([]);
     }
 
-    resolveLocale() {
+    resolveLocale(availableLocales) {
+        const normalize = value => (typeof value === 'string' ? value.trim().toLowerCase() : '');
+        const matchLocale = normalized => {
+            if (!normalized)
+                return null;
+            return availableLocales.find(locale => normalized === locale || normalized.startsWith(`${locale}-`)) || null;
+        };
+
         const overrideKey = 'evdash.language';
         try {
-            const stored = window.localStorage.getItem(overrideKey);
-            if (stored && typeof stored === 'string')
-                return stored.trim().toLowerCase().startsWith('de') ? 'de' : 'en';
+            const match = matchLocale(normalize(window.localStorage.getItem(overrideKey)));
+            if (match)
+                return match;
         } catch (error) {
             // ignore
         }
@@ -96,379 +100,13 @@ class DashboardApp {
             ? navigator.languages
             : [navigator.language || 'en'];
 
-        const normalized = candidates
-            .filter(Boolean)
-            .map(value => String(value).toLowerCase());
+        for (const candidate of candidates) {
+            const match = matchLocale(normalize(candidate));
+            if (match)
+                return match;
+        }
 
-        if (normalized.some(value => value === 'de' || value.startsWith('de-')))
-            return 'de';
-
-        return 'en';
-    }
-
-    buildTranslations() {
-        return {
-            en: {
-                'header.tagline': 'Monitor & troubleshoot EV chargers.',
-                'header.awaitingLogin': 'Awaiting login…',
-                'header.authenticateHint': 'Load the dashboard to authenticate.',
-                'header.logout': 'Logout',
-
-                'sidebar.dashboardSections': 'Dashboard sections',
-                'sidebar.sections': 'Sections',
-                'sidebar.workspace': 'Workspace',
-                'sidebar.overview': 'Overview',
-                'sidebar.chargers': 'Chargers',
-                'sidebar.chargersSubtitle': 'Live table & telemetry',
-                'sidebar.sessions': 'Charging sessions',
-                'sidebar.sessionsSubtitle': 'History of charging sessions',
-                'sidebar.help': 'Help',
-                'sidebar.helpSubtitle': 'How to use the dashboard',
-                'sidebar.version': 'Version',
-
-                'chargers.liveOverview': 'Live overview',
-                'chargers.title': 'Chargers',
-                'chargers.empty': 'No chargers loaded yet.',
-                'chargers.columns.name': 'Name',
-                'chargers.columns.car': 'Car',
-                'chargers.columns.energyManagerMode': 'Energy manager mode',
-                'chargers.columns.connected': 'Reachable',
-                'chargers.columns.status': 'Status',
-                'chargers.columns.lastStatusUpdate': 'Last status update',
-                'chargers.columns.chargingCurrent': 'Charging current',
-                'chargers.columns.chargingPhases': 'Charging phases',
-                'chargers.columns.currentPower': 'Current power',
-                'chargers.columns.sessionEnergy': 'Session energy',
-                'chargers.columns.version': 'Version',
-                'chargers.columns.temperature': 'Temperature',
-                'chargers.columns.digitalInputMode': 'Digital input',
-                'chargerStatus.Init': 'Initializing',
-                'chargerStatus.A1': 'Charger ready',
-                'chargerStatus.A2': 'Charger ready',
-                'chargerStatus.B1': 'Car connected, autorization required',
-                'chargerStatus.B2': 'Car connected',
-                'chargerStatus.C1': 'Charging pause, car ready',
-                'chargerStatus.C2': 'Charging',
-                'chargerStatus.F': 'Error',
-
-                'sessions.history': 'History',
-                'sessions.title': 'Charging sessions',
-                'sessions.filterCharger': 'Charger',
-                'sessions.allChargers': 'All chargers',
-                'sessions.filterCar': 'Car',
-                'sessions.allCars': 'All cars',
-                'sessions.filterUser': 'User',
-                'sessions.allUsers': 'All users',
-                'sessions.filterStartDate': 'Start date',
-                'sessions.filterEndDate': 'End date',
-                'sessions.fetch': 'Refresh view',
-                'sessions.downloadCsv': 'Download CSV',
-                'sessions.helper': 'Optionally filter charging sessions by charger, car, user and time range before downloading.',
-                'sessions.columns.name': 'Name',
-                'sessions.columns.charger': 'Charger',
-                'sessions.columns.car': 'Car',
-                'sessions.columns.startedBy': 'Started by',
-                'sessions.columns.rfidTag': 'RFID tag',
-                'sessions.columns.start': 'Start',
-                'sessions.columns.end': 'End',
-                'sessions.columns.energy': 'Energy (kWh)',
-                'sessions.emptyFetched': 'No charging sessions fetched yet.',
-                'sessions.noneFound': 'No charging sessions found.',
-                'sessions.noneInRange': 'No charging sessions match the selected time range.',
-                'sessions.noneMatchingFilters': 'No charging sessions match the selected filters.',
-                'sessions.fetchFailed': 'Failed to fetch charging sessions.',
-                'sessions.requestFailed': 'Unable to request charging sessions. Check the connection status.',
-                'sessions.displayFailed': 'Unable to display charging sessions.',
-                'sessions.startBeforeEnd': 'Start date must be earlier than end date.',
-                'sessions.sessionIdLabel': 'Session {id}',
-                'sessions.rfidIconLabel': 'RFID',
-
-                'help.guides': 'Guides',
-                'help.title': 'Using EV Dash',
-                'help.helper': 'This page explains the main areas of the dashboard and the most common actions.',
-                'help.gettingStartedTitle': 'Getting started',
-                'help.gettingStartedStep1': 'Sign in with your user name and password.',
-                'help.gettingStartedStep2': 'Wait until the status in the header changes to Connected.',
-                'help.gettingStartedStep3': 'Open the Chargers section to see the live status of all available chargers.',
-                'help.gettingStartedStep4': 'Select a charger row to open more details for that charger.',
-                'help.connectionTitle': 'Connection status',
-                'help.connectionBullet1': 'Connected means live values are up to date.',
-                'help.connectionBullet2': 'Connecting or Authenticating means the dashboard is restoring access.',
-                'help.connectionBullet3': 'Disconnected or Connection error means live updates are temporarily unavailable.',
-                'help.connectionBullet4': 'If needed, sign in again or ask your administrator for support.',
-                'help.liveView': 'Live view',
-                'help.chargersTitle': 'Understand the charger overview',
-                'help.chargersHelper': 'The Chargers section shows the current state of each charger in one place.',
-                'help.chargersBullet1': 'Name and Car help you identify the charger and the assigned vehicle.',
-                'help.chargersBullet2': 'Energy manager mode shows whether charging is running in quick, eco or timed operation.',
-                'help.chargersBullet3': 'Reachable shows whether the charger is currently available.',
-                'help.chargersBullet4': 'Status shows whether the charger is ready, a car is connected or charging is active.',
-                'help.chargersBullet5': 'Charging current, phases and current power describe the live charging performance.',
-                'help.chargersBullet6': 'Session energy shows how much energy has been delivered in the current charging session.',
-                'help.history': 'History',
-                'help.sessionsTitle': 'Use charging sessions',
-                'help.sessionsHelper': 'The Charging sessions section helps you review past charging activity and export it.',
-                'help.sessionsStep1': 'Open Charging sessions to load the session history.',
-                'help.sessionsStep2': 'Use the car filter if you only want to see sessions for one vehicle.',
-                'help.sessionsStep3': 'Set a start date and end date to narrow the time range.',
-                'help.sessionsStep4': 'Select Refresh view to update the table.',
-                'help.sessionsStep5': 'Select Download CSV to export the currently shown session list.',
-                'help.everyday': 'Everyday tasks',
-                'help.commonTasksTitle': 'Common things you can do',
-                'help.commonTaskBullet1': 'Check whether a vehicle is connected, waiting or actively charging.',
-                'help.commonTaskBullet2': 'Compare the live power and charging current of multiple chargers.',
-                'help.commonTaskBullet3': 'See how much energy was delivered during the current session.',
-                'help.commonTaskBullet4': 'Look up earlier charging sessions for a specific car or time period.',
-                'help.commonTaskBullet5': 'Download the visible charging history as a CSV file for further use.',
-
-                'easterEgg.hiddenTreat': 'Hidden treat',
-                'easterEgg.title': 'Grid Dash',
-                'easterEgg.close': 'Close',
-                'easterEgg.instructions': 'Use arrow keys or WASD to drive the tiny EV and catch lightning bolts. Press Esc or close to exit.',
-                'easterEgg.score': 'Score: {score}',
-                'easterEgg.hint': 'Stay inside the grid!',
-                'easterEgg.canvasLabel': 'Mini game canvas',
-
-                'login.title': 'Sign in',
-                'login.required': 'Authorization required.',
-                'login.username': 'Username',
-                'login.password': 'Password',
-                'login.helper': 'Contact the administrator to receive valid credentials.',
-                'login.signIn': 'Sign in',
-                'login.signingIn': 'Signing in…',
-                'login.emptyCredentials': 'Username and password are required.',
-                'login.failed': 'Login failed. Please try again.',
-                'login.networkError': 'Unable to reach the login endpoint. Please check your connection.',
-                'login.unexpectedResponse': 'Received an unexpected response from the server.',
-                'login.invalidResponse': 'Invalid response from server.',
-                'login.invalidRequest': 'The login request was malformed. Please reload the page and try again.',
-                'login.unauthorized': 'The provided credentials were not accepted.',
-
-                'connection.connecting': 'Connecting…',
-                'connection.authenticating': 'Authenticating…',
-                'connection.connected': 'Connected',
-                'connection.disconnected': 'Disconnected',
-                'connection.error': 'Connection error',
-                'connection.authenticationRequired': 'Authentication required',
-                'connection.loggedOut': 'Logged out',
-                'connection.sessionExpired': 'Session expired. Please sign in again.',
-                'connection.sessionExpiredRestore': 'Your session has expired. Please sign in again.',
-                'connection.restoreFailed': 'We could not restore your previous session. Please sign in again.',
-                'connection.loggedOutOverlay': 'You have been logged out.',
-                'connection.authFailed': 'Authentication failed. Please try again.',
-
-                'value.true': 'True',
-                'value.false': 'False',
-                'value.yes': 'Yes',
-                'value.no': 'No',
-                'value.unknownWithValue': 'Unknown ({value})',
-
-                'energyManagerMode.quick': 'Quick',
-                'energyManagerMode.eco': 'Eco',
-                'energyManagerMode.ecoTime': 'Eco + Time',
-
-                'digitalInputMode.chargingAllowed': 'Charging allowed',
-                'digitalInputMode.chargingAllowedInverted': 'Charging allowed inverted',
-                'digitalInputMode.pwmAndS0': 'PWM and S0 signaling',
-                'digitalInputMode.limitAndS0': 'Limit and S0 signaling',
-
-                'csv.sessionId': 'Session ID',
-                'csv.chargerName': 'Charger name',
-                'csv.chargerSerialNumber': 'Charger serial number',
-                'csv.car': 'Car',
-                'csv.startedBy': 'Started by',
-                'csv.source': 'Source',
-                'csv.authorizedUser': 'RFID user',
-                'csv.authorizedTag': 'RFID tag',
-                'csv.start': 'Start',
-                'csv.end': 'End',
-                'csv.energyKwh': 'Energy [kWh]',
-                'csv.meterStartKwh': 'Meter start [kWh]',
-                'csv.meterEndKwh': 'Meter end [kWh]',
-
-                'ws.parseFailed': 'Failed to parse message: {error}'
-            },
-            de: {
-                'header.tagline': 'Überwachen & Fehleranalyse von EV-Ladestationen.',
-                'header.awaitingLogin': 'Warte auf Anmeldung…',
-                'header.authenticateHint': 'Dashboard laden, um dich zu authentifizieren.',
-                'header.logout': 'Abmelden',
-
-                'sidebar.dashboardSections': 'Dashboard-Bereiche',
-                'sidebar.sections': 'Bereiche',
-                'sidebar.workspace': 'Arbeitsbereich',
-                'sidebar.overview': 'Übersicht',
-                'sidebar.chargers': 'Ladestationen',
-                'sidebar.chargersSubtitle': 'Live-Tabelle & Telemetrie',
-                'sidebar.sessions': 'Ladevorgänge',
-                'sidebar.sessionsSubtitle': 'Historie der Ladevorgänge',
-                'sidebar.help': 'Hilfe',
-                'sidebar.helpSubtitle': 'So nutzt du das Dashboard',
-                'sidebar.version': 'Version',
-
-                'chargers.liveOverview': 'Live-Übersicht',
-                'chargers.title': 'Ladestationen',
-                'chargers.empty': 'Noch keine Ladestationen geladen.',
-                'chargers.columns.name': 'Name',
-                'chargers.columns.car': 'Fahrzeug',
-                'chargers.columns.energyManagerMode': 'Energiemanager-Modus',
-                'chargers.columns.connected': 'Erreichbar',
-                'chargers.columns.status': 'Status',
-                'chargers.columns.lastStatusUpdate': 'Letzte Statusaktualisierung',
-                'chargers.columns.chargingCurrent': 'Ladestrom',
-                'chargers.columns.chargingPhases': 'Ladephasen',
-                'chargers.columns.currentPower': 'Aktuelle Leistung',
-                'chargers.columns.sessionEnergy': 'Energie (Sitzung)',
-                'chargers.columns.version': 'Version',
-                'chargers.columns.temperature': 'Temperatur',
-                'chargers.columns.digitalInputMode': 'Digitaler Eingang',
-                'chargerStatus.Init': 'Initialisierung',
-                'chargerStatus.A1': 'Ladestation bereit',
-                'chargerStatus.A2': 'Ladestation bereit',
-                'chargerStatus.B1': 'Fahrzeug verbunden, Autorisierung erforderlich',
-                'chargerStatus.B2': 'Fahrzeug verbunden',
-                'chargerStatus.C1': 'Ladepause, Fahrzeug bereit',
-                'chargerStatus.C2': 'Laden',
-                'chargerStatus.F': 'Fehler',
-
-                'sessions.history': 'Historie',
-                'sessions.title': 'Ladevorgänge',
-                'sessions.filterCharger': 'Ladestation',
-                'sessions.allChargers': 'Alle Ladestationen',
-                'sessions.filterCar': 'Fahrzeug',
-                'sessions.allCars': 'Alle Fahrzeuge',
-                'sessions.filterUser': 'Benutzer',
-                'sessions.allUsers': 'Alle Benutzer',
-                'sessions.filterStartDate': 'Startdatum',
-                'sessions.filterEndDate': 'Enddatum',
-                'sessions.fetch': 'Ansicht aktualisieren',
-                'sessions.downloadCsv': 'CSV herunterladen',
-                'sessions.helper': 'Optional nach Ladestation, Fahrzeug, Benutzer und Zeitraum filtern, bevor du die CSV herunterlädst.',
-                'sessions.columns.name': 'Name',
-                'sessions.columns.charger': 'Ladestation',
-                'sessions.columns.car': 'Fahrzeug',
-                'sessions.columns.startedBy': 'Gestartet von',
-                'sessions.columns.rfidTag': 'RFID-Tag',
-                'sessions.columns.start': 'Start',
-                'sessions.columns.end': 'Ende',
-                'sessions.columns.energy': 'Energie (kWh)',
-                'sessions.emptyFetched': 'Noch keine Ladevorgänge geladen.',
-                'sessions.noneFound': 'Keine Ladevorgänge gefunden.',
-                'sessions.noneInRange': 'Keine Ladevorgänge im ausgewählten Zeitraum.',
-                'sessions.noneMatchingFilters': 'Keine Ladevorgänge entsprechen den ausgewählten Filtern.',
-                'sessions.fetchFailed': 'Ladevorgänge konnten nicht geladen werden.',
-                'sessions.requestFailed': 'Ladevorgänge konnten nicht angefragt werden. Bitte Verbindungsstatus prüfen.',
-                'sessions.displayFailed': 'Ladevorgänge können nicht angezeigt werden.',
-                'sessions.startBeforeEnd': 'Das Startdatum muss vor dem Enddatum liegen.',
-                'sessions.sessionIdLabel': 'Sitzung {id}',
-                'sessions.rfidIconLabel': 'RFID',
-
-                'help.guides': 'Leitfäden',
-                'help.title': 'EV Dash verwenden',
-                'help.helper': 'Diese Seite erklärt die wichtigsten Bereiche des Dashboards und die häufigsten Aktionen.',
-                'help.gettingStartedTitle': 'Erste Schritte',
-                'help.gettingStartedStep1': 'Melde dich mit deinem Benutzernamen und Passwort an.',
-                'help.gettingStartedStep2': 'Warte, bis der Status in der Kopfzeile auf Verbunden wechselt.',
-                'help.gettingStartedStep3': 'Öffne den Bereich Ladestationen, um den Live-Status aller verfügbaren Ladestationen zu sehen.',
-                'help.gettingStartedStep4': 'Wähle eine Zeile aus, um mehr Details zu dieser Ladestation zu öffnen.',
-                'help.connectionTitle': 'Verbindungsstatus',
-                'help.connectionBullet1': 'Verbunden bedeutet, dass die Live-Werte aktuell sind.',
-                'help.connectionBullet2': 'Verbinden oder Authentifizierung bedeutet, dass das Dashboard den Zugriff wiederherstellt.',
-                'help.connectionBullet3': 'Getrennt oder Verbindungsfehler bedeutet, dass Live-Aktualisierungen vorübergehend nicht verfügbar sind.',
-                'help.connectionBullet4': 'Falls nötig, melde dich erneut an oder frage deinen Administrator um Unterstützung.',
-                'help.liveView': 'Live-Ansicht',
-                'help.chargersTitle': 'Die Ladestations-Übersicht verstehen',
-                'help.chargersHelper': 'Im Bereich Ladestationen siehst du den aktuellen Zustand jeder Ladestation an einem Ort.',
-                'help.chargersBullet1': 'Name und Fahrzeug helfen dir, die Ladestation und das zugeordnete Fahrzeug schnell zu erkennen.',
-                'help.chargersBullet2': 'Der Energiemanager-Modus zeigt, ob schnell, im Eco-Modus oder zeitgesteuert geladen wird.',
-                'help.chargersBullet3': 'Erreichbar zeigt, ob die Ladestation aktuell verfügbar ist.',
-                'help.chargersBullet4': 'Status zeigt, ob die Ladestation bereit ist, ein Fahrzeug verbunden ist oder gerade geladen wird.',
-                'help.chargersBullet5': 'Ladestrom, Ladephasen und aktuelle Leistung beschreiben die momentane Ladeleistung.',
-                'help.chargersBullet6': 'Energie (Sitzung) zeigt, wie viel Energie in der laufenden Sitzung bereits geladen wurde.',
-                'help.history': 'Historie',
-                'help.sessionsTitle': 'Ladevorgänge nutzen',
-                'help.sessionsHelper': 'Im Bereich Ladevorgänge kannst du frühere Ladevorgänge prüfen und exportieren.',
-                'help.sessionsStep1': 'Öffne Ladevorgänge, um die Verlaufsliste zu laden.',
-                'help.sessionsStep2': 'Nutze den Fahrzeugfilter, wenn du nur Vorgänge eines bestimmten Fahrzeugs sehen möchtest.',
-                'help.sessionsStep3': 'Setze Start- und Enddatum, um den Zeitraum einzugrenzen.',
-                'help.sessionsStep4': 'Wähle Ansicht aktualisieren, um die Tabelle neu zu laden.',
-                'help.sessionsStep5': 'Wähle CSV herunterladen, um die aktuell angezeigte Liste zu exportieren.',
-                'help.everyday': 'Alltag',
-                'help.commonTasksTitle': 'Häufige Aufgaben',
-                'help.commonTaskBullet1': 'Prüfen, ob ein Fahrzeug verbunden ist, wartet oder aktiv lädt.',
-                'help.commonTaskBullet2': 'Die aktuelle Leistung und den Ladestrom mehrerer Ladestationen vergleichen.',
-                'help.commonTaskBullet3': 'Sehen, wie viel Energie in der aktuellen Sitzung geladen wurde.',
-                'help.commonTaskBullet4': 'Frühere Ladevorgänge für ein bestimmtes Fahrzeug oder einen Zeitraum nachschlagen.',
-                'help.commonTaskBullet5': 'Die sichtbare Ladehistorie als CSV für die weitere Nutzung herunterladen.',
-
-                'easterEgg.hiddenTreat': 'Verstecktes Extra',
-                'easterEgg.title': 'Grid Dash',
-                'easterEgg.close': 'Schließen',
-                'easterEgg.instructions': 'Mit Pfeiltasten oder WASD fahren, Blitze einsammeln. Mit Esc oder Schließen beenden.',
-                'easterEgg.score': 'Punkte: {score}',
-                'easterEgg.hint': 'Bleib im Raster!',
-                'easterEgg.canvasLabel': 'Mini-Spiel-Leinwand',
-
-                'login.title': 'Anmelden',
-                'login.required': 'Autorisierung erforderlich.',
-                'login.username': 'Benutzername',
-                'login.password': 'Passwort',
-                'login.helper': 'Wende dich an den Administrator, um gültige Zugangsdaten zu erhalten.',
-                'login.signIn': 'Anmelden',
-                'login.signingIn': 'Anmeldung…',
-                'login.emptyCredentials': 'Benutzername und Passwort sind erforderlich.',
-                'login.failed': 'Anmeldung fehlgeschlagen. Bitte erneut versuchen.',
-                'login.networkError': 'Login-Endpunkt nicht erreichbar. Bitte Verbindung prüfen.',
-                'login.unexpectedResponse': 'Unerwartete Antwort vom Server erhalten.',
-                'login.invalidResponse': 'Ungültige Serverantwort.',
-                'login.invalidRequest': 'Die Login-Anfrage war fehlerhaft. Bitte Seite neu laden und erneut versuchen.',
-                'login.unauthorized': 'Die eingegebenen Zugangsdaten wurden nicht akzeptiert.',
-
-                'connection.connecting': 'Verbinden…',
-                'connection.authenticating': 'Authentifizierung…',
-                'connection.connected': 'Verbunden',
-                'connection.disconnected': 'Getrennt',
-                'connection.error': 'Verbindungsfehler',
-                'connection.authenticationRequired': 'Authentifizierung erforderlich',
-                'connection.loggedOut': 'Abgemeldet',
-                'connection.sessionExpired': 'Sitzung abgelaufen. Bitte erneut anmelden.',
-                'connection.sessionExpiredRestore': 'Deine Sitzung ist abgelaufen. Bitte erneut anmelden.',
-                'connection.restoreFailed': 'Die vorige Sitzung konnte nicht wiederhergestellt werden. Bitte erneut anmelden.',
-                'connection.loggedOutOverlay': 'Du wurdest abgemeldet.',
-                'connection.authFailed': 'Authentifizierung fehlgeschlagen. Bitte erneut versuchen.',
-
-                'value.true': 'Wahr',
-                'value.false': 'Falsch',
-                'value.yes': 'Ja',
-                'value.no': 'Nein',
-                'value.unknownWithValue': 'Unbekannt ({value})',
-
-                'energyManagerMode.quick': 'Schnell',
-                'energyManagerMode.eco': 'Eco',
-                'energyManagerMode.ecoTime': 'Eco + Zeit',
-
-                'digitalInputMode.chargingAllowed': 'Laden erlaubt',
-                'digitalInputMode.chargingAllowedInverted': 'Laden erlaubt (invertiert)',
-                'digitalInputMode.pwmAndS0': 'PWM- und S0-Signalisierung',
-                'digitalInputMode.limitAndS0': 'Limit- und S0-Signalisierung',
-
-                'csv.sessionId': 'Sitzungs-ID',
-                'csv.chargerName': 'Ladestationsname',
-                'csv.chargerSerialNumber': 'Seriennummer der Ladestation',
-                'csv.car': 'Fahrzeug',
-                'csv.startedBy': 'Gestartet von',
-                'csv.source': 'Quelle',
-                'csv.authorizedUser': 'RFID-Benutzer',
-                'csv.authorizedTag': 'RFID-Tag',
-                'csv.start': 'Start',
-                'csv.end': 'Ende',
-                'csv.energyKwh': 'Energie [kWh]',
-                'csv.meterStartKwh': 'Zählerstand Start [kWh]',
-                'csv.meterEndKwh': 'Zählerstand Ende [kWh]',
-
-                'ws.parseFailed': 'Nachricht konnte nicht gelesen werden: {error}'
-            }
-        };
+        return availableLocales.includes('en') ? 'en' : availableLocales[0];
     }
 
     t(key, variables) {
@@ -568,19 +206,6 @@ class DashboardApp {
         if (this.elements.brandLogo) {
             this.elements.brandLogo.addEventListener('click', () => {
                 this.handleBrandLogoClick();
-            });
-        }
-
-        if (this.elements.easterEggClose) {
-            this.elements.easterEggClose.addEventListener('click', () => {
-                this.stopEasterEggGame();
-            });
-        }
-
-        if (this.elements.easterEggOverlay) {
-            this.elements.easterEggOverlay.addEventListener('click', event => {
-                if (event.target === this.elements.easterEggOverlay)
-                    this.stopEasterEggGame();
             });
         }
 
@@ -904,8 +529,6 @@ class DashboardApp {
             return;
         }
 
-        console.log('<--', data);
-
         let handled = false;
         if (data.requestId && this.pendingRequests.has(data.requestId)) {
             const pending = this.pendingRequests.get(data.requestId);
@@ -1155,16 +778,18 @@ class DashboardApp {
             if (!key)
                 return;
             seen.add(key);
-            this.upsertCharger(charger);
+            this.upsertCharger(charger, { skipSelectorUpdate: true });
         });
 
         for (const existingId of Array.from(this.chargers.keys())) {
             if (!seen.has(existingId))
-                this.removeCharger(existingId);
+                this.removeCharger(existingId, { skipSelectorUpdate: true });
         }
+
+        this.updateChargerSelector();
     }
 
-    upsertCharger(charger) {
+    upsertCharger(charger, { skipSelectorUpdate = false } = {}) {
         const key = this.getChargerKey(charger);
         if (!key)
             return;
@@ -1174,7 +799,8 @@ class DashboardApp {
         const merged = { ...previous, ...charger };
         merged.thingId = key;
         this.chargers.set(key, merged);
-        this.updateChargerSelector();
+        if (!skipSelectorUpdate)
+            this.updateChargerSelector();
         this.syncChargerRow(merged, !hasExisting);
     }
 
@@ -1335,12 +961,22 @@ class DashboardApp {
             { label: this.t('chargers.columns.digitalInputMode'), key: 'digitalInputMode' }
         ];
 
+        const authorizedUser = this.getAuthorizedUserName(charger);
+        if (authorizedUser)
+            items.push({ label: this.t('chargers.details.authorizedUser'), value: authorizedUser });
+
+        const authorizedTagHash = this.formatSessionText(charger ? charger.authorizedTagHash : null);
+        if (authorizedUser && authorizedTagHash)
+            items.push({ label: this.t('chargers.details.authorizedTag'), value: authorizedTagHash });
+
         list.innerHTML = '';
         items.forEach(item => {
             const term = document.createElement('dt');
             term.textContent = item.label;
             const description = document.createElement('dd');
-            const value = charger && Object.prototype.hasOwnProperty.call(charger, item.key) ? charger[item.key] : null;
+            const value = Object.prototype.hasOwnProperty.call(item, 'value')
+                ? item.value
+                : (charger && Object.prototype.hasOwnProperty.call(charger, item.key) ? charger[item.key] : null);
             description.textContent = this.formatChargerValue(item.key, value);
             list.appendChild(term);
             list.appendChild(description);
@@ -1351,10 +987,14 @@ class DashboardApp {
         if (!this.elements.chargerTableBody || !chargerId)
             return null;
 
-        const normalizedId = typeof CSS !== 'undefined' && CSS.escape
-            ? CSS.escape(String(chargerId))
-            : String(chargerId).replace(/"/g, '\\"');
+        const normalizedId = this.escapeAttributeValue(chargerId);
         return this.elements.chargerTableBody.querySelector(`tr[data-charger-details-for="${normalizedId}"]`);
+    }
+
+    escapeAttributeValue(value) {
+        return typeof CSS !== 'undefined' && CSS.escape
+            ? CSS.escape(String(value))
+            : String(value).replace(/"/g, '\\"');
     }
 
     getVisibleChargerColumnCount() {
@@ -1383,7 +1023,7 @@ class DashboardApp {
         cell.textContent = this.formatChargerValue(key, value);
     }
 
-    removeCharger(identifier) {
+    removeCharger(identifier, { skipSelectorUpdate = false } = {}) {
         const key = this.getChargerKey(identifier);
         if (!key)
             return;
@@ -1397,7 +1037,8 @@ class DashboardApp {
         if (detailsRow && detailsRow.parentElement)
             detailsRow.parentElement.removeChild(detailsRow);
 
-        this.updateChargerSelector();
+        if (!skipSelectorUpdate)
+            this.updateChargerSelector();
         this.toggleChargerEmptyState();
     }
 
@@ -1419,13 +1060,15 @@ class DashboardApp {
         if (!this.elements.chargerTableBody || !chargerId)
             return null;
 
-        const normalizedId = typeof CSS !== 'undefined' && CSS.escape
-            ? CSS.escape(String(chargerId))
-            : String(chargerId).replace(/"/g, '\\"');
+        const normalizedId = this.escapeAttributeValue(chargerId);
         return this.elements.chargerTableBody.querySelector(`tr[data-charger-id="${normalizedId}"]`);
     }
 
     getChargerKey(source) {
+        return this.getEntityKey(source);
+    }
+
+    getEntityKey(source) {
         if (!source)
             return null;
 
@@ -1442,7 +1085,16 @@ class DashboardApp {
     }
 
     updateChargerSelector() {
-        const select = this.elements.chargerFilter;
+        const chargers = Array.from(this.chargers.values())
+            .sort((a, b) => (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' }));
+
+        this.populateSelect(this.elements.chargerFilter, this.t('sessions.allChargers'), chargers.map(charger => {
+            const value = this.getChargerKey(charger) || '';
+            return { value, label: charger.name || value };
+        }));
+    }
+
+    populateSelect(select, defaultLabel, entries) {
         if (!select)
             return;
 
@@ -1452,23 +1104,17 @@ class DashboardApp {
 
         const defaultOption = document.createElement('option');
         defaultOption.value = '';
-        defaultOption.textContent = this.t('sessions.allChargers');
+        defaultOption.textContent = defaultLabel;
         select.appendChild(defaultOption);
 
-        const chargers = Array.from(this.chargers.values())
-            .sort((a, b) => (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' }));
-
-        chargers.forEach(charger => {
+        entries.forEach(entry => {
             const option = document.createElement('option');
-            option.value = this.getChargerKey(charger) || '';
-            option.textContent = charger.name || option.value;
+            option.value = entry.value;
+            option.textContent = entry.label;
             select.appendChild(option);
         });
 
-        const hasValue = currentValue && select.querySelector
-            && typeof CSS !== 'undefined' && CSS.escape
-            && select.querySelector(`option[value="${CSS.escape(currentValue)}"]`);
-
+        const hasValue = currentValue && entries.some(entry => entry.value === currentValue);
         select.value = hasValue ? currentValue : '';
     }
 
@@ -1492,16 +1138,18 @@ class DashboardApp {
             if (!key)
                 return;
             seen.add(key);
-            this.upsertCar(car);
+            this.upsertCar(car, { skipSelectorUpdate: true });
         });
 
         for (const existingId of Array.from(this.cars.keys())) {
             if (!seen.has(existingId))
-                this.removeCar(existingId);
+                this.removeCar(existingId, { skipSelectorUpdate: true });
         }
+
+        this.updateCarSelector();
     }
 
-    upsertCar(car) {
+    upsertCar(car, { skipSelectorUpdate = false } = {}) {
         const key = this.getCarKey(car);
         if (!key)
             return;
@@ -1511,89 +1159,36 @@ class DashboardApp {
         const merged = { ...previous, ...car };
         merged.thingId = key;
         this.cars.set(key, merged);
-        this.updateCarSelector();
+        if (!skipSelectorUpdate)
+            this.updateCarSelector();
     }
 
-    removeCar(identifier) {
+    removeCar(identifier, { skipSelectorUpdate = false } = {}) {
         const key = this.getCarKey(identifier);
         if (!key)
             return;
 
         this.cars.delete(key);
-        this.updateCarSelector();
+        if (!skipSelectorUpdate)
+            this.updateCarSelector();
     }
 
     getCarKey(source) {
-        if (!source)
-            return null;
-
-        if (typeof source === 'string')
-            return source;
-
-        if (source.thingId)
-            return source.thingId;
-
-        if (source.id)
-            return source.id;
-
-        return null;
+        return this.getEntityKey(source);
     }
 
     updateCarSelector() {
-        const select = this.elements.carFilter;
-        if (!select)
-            return;
-
-        const currentValue = select.value;
-        while (select.options.length > 0)
-            select.remove(0);
-
-        const defaultOption = document.createElement('option');
-        defaultOption.value = '';
-        defaultOption.textContent = this.t('sessions.allCars');
-        select.appendChild(defaultOption);
-
         const cars = Array.from(this.cars.values())
             .sort((a, b) => (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' }));
 
-        cars.forEach(car => {
-            const option = document.createElement('option');
-            option.value = this.getCarKey(car) || '';
-            option.textContent = car.name || option.value;
-            select.appendChild(option);
-        });
-
-        const hasValue = currentValue && select.querySelector
-            && typeof CSS !== 'undefined' && CSS.escape
-            && select.querySelector(`option[value="${CSS.escape(currentValue)}"]`);
-
-        select.value = hasValue ? currentValue : '';
+        this.populateSelect(this.elements.carFilter, this.t('sessions.allCars'), cars.map(car => {
+            const value = this.getCarKey(car) || '';
+            return { value, label: car.name || value };
+        }));
     }
 
     updateUserSelector(sessions) {
-        const select = this.elements.userFilter;
-        if (!select)
-            return;
-
-        const currentValue = select.value;
-        while (select.options.length > 0)
-            select.remove(0);
-
-        const defaultOption = document.createElement('option');
-        defaultOption.value = '';
-        defaultOption.textContent = this.t('sessions.allUsers');
-        select.appendChild(defaultOption);
-
-        const options = this.collectSessionUserFilterOptions(sessions);
-        options.forEach(entry => {
-            const option = document.createElement('option');
-            option.value = entry.value;
-            option.textContent = entry.label;
-            select.appendChild(option);
-        });
-
-        const hasValue = currentValue && Array.from(select.options).some(option => option.value === currentValue);
-        select.value = hasValue ? currentValue : '';
+        this.populateSelect(this.elements.userFilter, this.t('sessions.allUsers'), this.collectSessionUserFilterOptions(sessions));
     }
 
     collectSessionUserFilterOptions(sessions) {
@@ -1602,46 +1197,26 @@ class DashboardApp {
 
         const entries = new Map();
         sessions.forEach(session => {
-            if (!session || typeof session !== 'object')
+            const user = this.getSessionUserIdentity(session);
+            if (!user)
                 return;
 
-            const actorName = this.formatSessionText(session.actorName);
-            if (actorName) {
-                const value = this.createSessionUserFilterValue('actor', actorName);
-                if (!entries.has(value)) {
-                    entries.set(value, {
-                        value,
-                        label: actorName,
-                        sortKey: actorName.toLowerCase(),
-                        typeOrder: 0
-                    });
-                }
-            }
-
-            const authorizedUser = this.formatSessionText(session.authorizedUser);
-            if (authorizedUser) {
-                const value = this.createSessionUserFilterValue('rfid', authorizedUser);
-                if (!entries.has(value)) {
-                    entries.set(value, {
-                        value,
-                        label: authorizedUser,
-                        sortKey: authorizedUser.toLowerCase(),
-                        typeOrder: 1
-                    });
-                }
+            const value = this.createSessionUserFilterValue(user.username);
+            if (!entries.has(value)) {
+                entries.set(value, {
+                    value,
+                    label: user.username,
+                    sortKey: user.username.toLowerCase()
+                });
             }
         });
 
-        return Array.from(entries.values()).sort((a, b) => {
-            const nameCompare = a.sortKey.localeCompare(b.sortKey, undefined, { sensitivity: 'base' });
-            if (nameCompare !== 0)
-                return nameCompare;
-            return a.typeOrder - b.typeOrder;
-        });
+        return Array.from(entries.values()).sort((a, b) =>
+            a.sortKey.localeCompare(b.sortKey, undefined, { sensitivity: 'base' }));
     }
 
-    createSessionUserFilterValue(type, name) {
-        return `${type}:${encodeURIComponent(this.normalizeSessionUserName(name))}`;
+    createSessionUserFilterValue(name) {
+        return `user:${encodeURIComponent(this.normalizeSessionUserName(name))}`;
     }
 
     parseSessionUserFilterValue(value) {
@@ -1653,7 +1228,7 @@ class DashboardApp {
             return null;
 
         const type = value.slice(0, separator);
-        if (type !== 'actor' && type !== 'rfid')
+        if (type !== 'user')
             return null;
 
         const encodedName = value.slice(separator + 1);
@@ -1665,7 +1240,7 @@ class DashboardApp {
         }
 
         name = this.normalizeSessionUserName(name);
-        return name ? { type, name } : null;
+        return name || null;
     }
 
     formatNumber(value, unit) {
@@ -1747,26 +1322,8 @@ class DashboardApp {
             return Number.isFinite(value) ? this.t('value.unknownWithValue', { value }) : '—';
         }
 
-        if (key === 'lastStatusUpdate') {
-            const numeric = typeof value === 'string' ? Number.parseFloat(value) : value;
-            if (!Number.isFinite(numeric))
-                return '—';
-
-            const ms = numeric > 1e12 ? numeric : numeric * 1000;
-            const date = new Date(ms);
-            if (Number.isNaN(date.getTime()))
-                return '—';
-
-            const pad = part => String(part).padStart(2, '0');
-            const day = pad(date.getDate());
-            const month = pad(date.getMonth() + 1);
-            const year = date.getFullYear();
-            const hours = pad(date.getHours());
-            const minutes = pad(date.getMinutes());
-            const seconds = pad(date.getSeconds());
-
-            return `${day}.${month}.${year} ${hours}:${minutes}:${seconds}`;
-        }
+        if (key === 'lastStatusUpdate')
+            return this.formatDateTime(value, { withSeconds: true });
 
         if (key === 'chargingCurrent' || key === 'currentPower' || key === 'sessionEnergy') {
             const numericValue = this.coerceFiniteNumber(value);
@@ -1925,6 +1482,26 @@ class DashboardApp {
         return Number.isFinite(ms) ? ms : null;
     }
 
+    formatDateTime(value, { withSeconds = false, fallback = '—' } = {}) {
+        const ms = this.normalizeTimestampToMs(value);
+        if (ms === null)
+            return fallback;
+
+        const date = new Date(ms);
+        if (Number.isNaN(date.getTime()))
+            return fallback;
+
+        const pad = part => String(part).padStart(2, '0');
+        const day = pad(date.getDate());
+        const month = pad(date.getMonth() + 1);
+        const year = date.getFullYear();
+        const hours = pad(date.getHours());
+        const minutes = pad(date.getMinutes());
+        const time = withSeconds ? `${hours}:${minutes}:${pad(date.getSeconds())}` : `${hours}:${minutes}`;
+
+        return `${day}.${month}.${year} ${time}`;
+    }
+
     filterChargingSessionsByTimeRange(sessions) {
         if (!Array.isArray(sessions) || !sessions.length)
             return [];
@@ -1996,21 +1573,13 @@ class DashboardApp {
         if (!Array.isArray(sessions) || !sessions.length)
             return [];
 
-        const selected = this.parseSessionUserFilterValue(this.elements.userFilter ? this.elements.userFilter.value : '');
-        if (!selected)
+        const selectedUser = this.parseSessionUserFilterValue(this.elements.userFilter ? this.elements.userFilter.value : '');
+        if (!selectedUser)
             return sessions;
 
         return sessions.filter(session => {
-            if (!session || typeof session !== 'object')
-                return false;
-
-            if (selected.type === 'actor')
-                return this.normalizeSessionUserName(session.actorName) === selected.name;
-
-            if (selected.type === 'rfid')
-                return this.normalizeSessionUserName(session.authorizedUser) === selected.name;
-
-            return false;
+            const user = this.getSessionUserIdentity(session);
+            return user && this.normalizeSessionUserName(user.username) === selectedUser;
         });
     }
 
@@ -2047,8 +1616,7 @@ class DashboardApp {
             row.appendChild(cell);
         });
 
-        row.appendChild(this.buildStartedByCell(session));
-        row.appendChild(this.buildRfidTagCell(session));
+        row.appendChild(this.buildSessionUserCell(session));
 
         textCells.slice(3).forEach((value, index) => {
             const cell = document.createElement('td');
@@ -2061,42 +1629,26 @@ class DashboardApp {
         return row;
     }
 
-    buildStartedByCell(session) {
+    buildSessionUserCell(session) {
         const cell = document.createElement('td');
-        const actorName = this.formatSessionText(session ? session.actorName : null);
-        if (!actorName) {
+        const user = this.getSessionUserIdentity(session);
+        if (!user) {
             cell.textContent = '—';
             return cell;
         }
 
         const wrapper = document.createElement('span');
         wrapper.className = 'session-attribution';
-        wrapper.textContent = actorName;
-
-        const sourceName = this.formatSessionText(session ? session.sourceName : null);
-        if (sourceName)
-            wrapper.title = sourceName;
-
-        cell.appendChild(wrapper);
-        return cell;
-    }
-
-    buildRfidTagCell(session) {
-        const cell = document.createElement('td');
-        const authorizedUser = this.formatSessionText(session ? session.authorizedUser : null);
-        const authorizedTag = this.formatSessionText(session ? session.authorizedTag : null);
-        if (!authorizedUser && !authorizedTag) {
-            cell.textContent = '—';
-            return cell;
+        if (user.method === 'rfid') {
+            wrapper.title = this.t('sessions.rfidIconLabel');
+            wrapper.appendChild(this.createRfidIcon());
+        } else {
+            wrapper.title = this.t('sessions.manualIconLabel');
+            wrapper.appendChild(this.createManualUserIcon());
         }
 
-        const wrapper = document.createElement('span');
-        wrapper.className = 'rfid-attribution';
-        wrapper.title = this.t('sessions.rfidIconLabel');
-        wrapper.appendChild(this.createRfidIcon());
-
         const label = document.createElement('span');
-        label.textContent = [authorizedUser, authorizedTag].filter(Boolean).join(' · ');
+        label.textContent = user.username;
         wrapper.appendChild(label);
 
         cell.appendChild(wrapper);
@@ -2109,11 +1661,26 @@ class DashboardApp {
         svg.setAttribute('viewBox', '0 -960 960 960');
         svg.setAttribute('aria-label', this.t('sessions.rfidIconLabel'));
         svg.setAttribute('role', 'img');
-        svg.classList.add('rfid-icon');
+        svg.classList.add('session-origin-icon');
 
         const path = document.createElementNS(namespace, 'path');
         path.setAttribute('fill', 'currentColor');
         path.setAttribute('d', 'M336-374q9-24 14.5-50.5T356-480q0-29-5.5-55.5T336-586l-74 30q6 18 10 37t4 39q0 20-4 39t-10 37l74 30Zm128 54q17-38 24.5-78t7.5-82q0-42-7.5-82T464-640l-74 30q14 30 20 62.5t6 67.5q0 35-6 67.5T390-350l74 30Zm130 54q21-50 31.5-103.5T636-480q0-57-10.5-110.5T594-694l-74 32q18 42 27 88t9 94q0 48-9 94t-27 88l74 32ZM480-80q-83 0-156-31.5T197-197q-54-54-85.5-127T80-480q0-83 31.5-156T197-763q54-54 127-85.5T480-880q83 0 156 31.5T763-763q54 54 85.5 127T880-480q0 83-31.5 156T763-197q-54 54-127 85.5T480-80Zm0-80q134 0 227-93t93-227q0-134-93-227t-227-93q-134 0-227 93t-93 227q0 134 93 227t227 93Zm0-320Z');
+        svg.appendChild(path);
+        return svg;
+    }
+
+    createManualUserIcon() {
+        const namespace = 'http://www.w3.org/2000/svg';
+        const svg = document.createElementNS(namespace, 'svg');
+        svg.setAttribute('viewBox', '0 -960 960 960');
+        svg.setAttribute('aria-label', this.t('sessions.manualIconLabel'));
+        svg.setAttribute('role', 'img');
+        svg.classList.add('session-origin-icon');
+
+        const path = document.createElementNS(namespace, 'path');
+        path.setAttribute('fill', 'currentColor');
+        path.setAttribute('d', 'M480-504.62q-49.5 0-84.75-35.25T360-624.62q0-49.5 35.25-84.75T480-744.62q49.5 0 84.75 35.25T600-624.62q0 49.5-35.25 84.75T480-504.62ZM200-215.38v-65.85q0-24.77 14.42-46.35 14.43-21.57 38.81-33.5 56.62-27.15 113.31-40.73 56.69-13.57 113.46-13.57 56.77 0 113.46 13.57 56.69 13.58 113.31 40.73 24.38 11.93 38.81 33.5Q760-306 760-281.23v65.85H200Zm40-40h480v-25.85q0-13.31-8.58-25-8.57-11.69-23.73-19.77-49.38-23.92-101.83-36.65-52.45-12.73-105.86-12.73t-105.86 12.73Q321.69-349.92 272.31-326q-15.16 8.08-23.73 19.77-8.58 11.69-8.58 25v25.85Zm240-289.24q33 0 56.5-23.5t23.5-56.5q0-33-23.5-56.5t-56.5-23.5q-33 0-56.5 23.5t-23.5 56.5q0 33 23.5 56.5t56.5 23.5Z');
         svg.appendChild(path);
         return svg;
     }
@@ -2124,6 +1691,44 @@ class DashboardApp {
 
         const text = String(value).trim();
         return text.length ? text : '';
+    }
+
+    getTriggerUserName(session) {
+        if (!session || typeof session !== 'object')
+            return '';
+
+        return this.formatSessionText(session.triggerDisplayName)
+            || this.formatSessionText(session.triggerUsername);
+    }
+
+    getAuthorizedUserName(source) {
+        if (!source || typeof source !== 'object')
+            return '';
+
+        return this.formatSessionText(source.authorizedDisplayName)
+            || this.formatSessionText(source.authorizedUsername);
+    }
+
+    getSessionUserIdentity(session) {
+        if (!session || typeof session !== 'object')
+            return null;
+
+        const triggerUsername = this.formatSessionText(session.triggerUsername)
+            || this.formatSessionText(session.triggerDisplayName);
+        const authorizedUsername = this.formatSessionText(session.authorizedUsername)
+            || this.formatSessionText(session.authorizedDisplayName);
+        const authorizedTagHash = this.formatSessionText(session.authorizedTagHash);
+
+        if (authorizedTagHash && authorizedUsername)
+            return { username: authorizedUsername, method: 'rfid' };
+
+        if (triggerUsername)
+            return { username: triggerUsername, method: 'manual' };
+
+        if (authorizedUsername)
+            return { username: authorizedUsername, method: 'manual' };
+
+        return null;
     }
 
     deriveSessionName(session) {
@@ -2143,23 +1748,7 @@ class DashboardApp {
     }
 
     formatTimestamp(timestamp) {
-        const numeric = typeof timestamp === 'string' ? Number.parseFloat(timestamp) : timestamp;
-        if (!Number.isFinite(numeric))
-            return '—';
-
-        const ms = numeric > 1e12 ? numeric : numeric * 1000;
-        const date = new Date(ms);
-        if (Number.isNaN(date.getTime()))
-            return '—';
-
-        const pad = value => String(value).padStart(2, '0');
-        const day = pad(date.getDate());
-        const month = pad(date.getMonth() + 1);
-        const year = date.getFullYear();
-        const hours = pad(date.getHours());
-        const minutes = pad(date.getMinutes());
-
-        return `${day}.${month}.${year} ${hours}:${minutes}`;
+        return this.formatDateTime(timestamp);
     }
 
     formatSessionEnergy(session) {
@@ -2237,10 +1826,10 @@ class DashboardApp {
             { label: this.t('csv.chargerName'), key: 'chargerName' },
             { label: this.t('csv.chargerSerialNumber'), key: 'chargerSerialNumber' },
             { label: this.t('csv.car'), key: 'carName' },
-            { label: this.t('csv.startedBy'), key: 'actorName' },
-            { label: this.t('csv.source'), key: 'sourceName' },
-            { label: this.t('csv.authorizedUser'), key: 'authorizedUser' },
-            { label: this.t('csv.authorizedTag'), key: 'authorizedTag' },
+            { label: this.t('csv.startedBy'), value: session => this.getTriggerUserName(session) },
+            { label: this.t('csv.source'), key: 'triggerSourceName' },
+            { label: this.t('csv.authorizedUser'), value: session => this.getAuthorizedUserName(session) },
+            { label: this.t('csv.authorizedTag'), key: 'authorizedTagHash' },
             { label: this.t('csv.start'), key: 'startTimestamp', formatter: value => this.formatCsvTimestamp(value) },
             { label: this.t('csv.end'), key: 'endTimestamp', formatter: value => this.formatCsvTimestamp(value) },
             { label: this.t('csv.energyKwh'), key: 'sessionEnergy' },
@@ -2252,7 +1841,9 @@ class DashboardApp {
         lines.push(columns.map(column => column.label).join(';'));
         sessions.forEach(session => {
             const row = columns.map(column => {
-                const raw = session ? session[column.key] : '';
+                const raw = typeof column.value === 'function'
+                    ? column.value(session)
+                    : (session ? session[column.key] : '');
                 const formatted = typeof column.formatter === 'function'
                     ? column.formatter(raw)
                     : this.formatCsvPrimitive(raw);
@@ -2300,23 +1891,7 @@ class DashboardApp {
     }
 
     formatCsvTimestamp(value) {
-        const numeric = typeof value === 'string' ? Number.parseFloat(value) : value;
-        if (!Number.isFinite(numeric))
-            return '';
-
-        const ms = numeric > 1e12 ? numeric : numeric * 1000;
-        const date = new Date(ms);
-        if (Number.isNaN(date.getTime()))
-            return '';
-
-        const pad = part => String(part).padStart(2, '0');
-        const day = pad(date.getDate());
-        const month = pad(date.getMonth() + 1);
-        const year = date.getFullYear();
-        const hours = pad(date.getHours());
-        const minutes = pad(date.getMinutes());
-
-        return `${day}.${month}.${year} ${hours}:${minutes}`;
+        return this.formatDateTime(value, { fallback: '' });
     }
 
     escapeCsvValue(value) {
@@ -2353,234 +1928,8 @@ class DashboardApp {
 
         if (this.easterEggClickCount >= 10) {
             this.easterEggClickCount = 0;
-            this.startEasterEggGame();
+            this.easterEggGame.start();
         }
-    }
-
-    startEasterEggGame() {
-        if (!this.elements.easterEggOverlay || !this.elements.easterEggCanvas)
-            return;
-
-        this.elements.easterEggOverlay.classList.remove('hidden');
-        this.elements.easterEggOverlay.setAttribute('aria-hidden', 'false');
-
-        const game = this.easterEggGame;
-        const canvas = this.elements.easterEggCanvas;
-        game.running = true;
-        game.score = 0;
-        game.keys = {};
-        game.lastTime = null;
-        game.player.x = canvas.width * 0.2;
-        game.player.y = canvas.height * 0.5;
-        this.spawnEasterEggTarget();
-        this.updateEasterEggScore();
-        this.toggleEasterEggListeners(true);
-
-        const loop = timestamp => {
-            if (!game.running)
-                return;
-
-            if (!game.lastTime)
-                game.lastTime = timestamp;
-            const delta = Math.min((timestamp - game.lastTime) / 16.67, 3);
-            game.lastTime = timestamp;
-
-            this.updateEasterEggPhysics(delta);
-            this.drawEasterEggFrame();
-            game.frameId = window.requestAnimationFrame(loop);
-        };
-
-        game.frameId = window.requestAnimationFrame(loop);
-    }
-
-    stopEasterEggGame() {
-        const game = this.easterEggGame;
-        game.running = false;
-        game.keys = {};
-        if (game.frameId) {
-            window.cancelAnimationFrame(game.frameId);
-            game.frameId = null;
-        }
-
-        if (this.elements.easterEggOverlay) {
-            this.elements.easterEggOverlay.classList.add('hidden');
-            this.elements.easterEggOverlay.setAttribute('aria-hidden', 'true');
-        }
-
-        this.toggleEasterEggListeners(false);
-    }
-
-    toggleEasterEggListeners(enable) {
-        if (!this._easterEggKeyDownHandler) {
-            this._easterEggKeyDownHandler = event => this.handleEasterEggKey(event, true);
-            this._easterEggKeyUpHandler = event => this.handleEasterEggKey(event, false);
-        }
-
-        if (enable) {
-            document.addEventListener('keydown', this._easterEggKeyDownHandler);
-            document.addEventListener('keyup', this._easterEggKeyUpHandler);
-        } else {
-            document.removeEventListener('keydown', this._easterEggKeyDownHandler);
-            document.removeEventListener('keyup', this._easterEggKeyUpHandler);
-        }
-    }
-
-    handleEasterEggKey(event, isDown) {
-        if (!this.easterEggGame.running)
-            return;
-
-        const key = event.key ? event.key.toLowerCase() : '';
-        const movableKeys = ['arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'w', 'a', 's', 'd'];
-        if (key === 'escape') {
-            this.stopEasterEggGame();
-            return;
-        }
-
-        if (movableKeys.includes(key)) {
-            event.preventDefault();
-            this.easterEggGame.keys[key] = isDown;
-        }
-    }
-
-    updateEasterEggPhysics(delta) {
-        const canvas = this.elements.easterEggCanvas;
-        if (!canvas)
-            return;
-
-        const game = this.easterEggGame;
-        const { player, target } = game;
-        const input = {
-            x: (game.keys.arrowright || game.keys.d ? 1 : 0) - (game.keys.arrowleft || game.keys.a ? 1 : 0),
-            y: (game.keys.arrowdown || game.keys.s ? 1 : 0) - (game.keys.arrowup || game.keys.w ? 1 : 0)
-        };
-
-        if (input.x !== 0 || input.y !== 0) {
-            const length = Math.hypot(input.x, input.y) || 1;
-            const speed = player.speed * delta;
-            player.x += (input.x / length) * speed;
-            player.y += (input.y / length) * speed;
-        }
-
-        const minX = player.size;
-        const maxX = canvas.width - player.size;
-        const minY = player.size;
-        const maxY = canvas.height - player.size;
-        player.x = Math.min(Math.max(player.x, minX), maxX);
-        player.y = Math.min(Math.max(player.y, minY), maxY);
-
-        const dx = player.x - target.x;
-        const dy = player.y - target.y;
-        const distance = Math.hypot(dx, dy);
-        if (distance <= player.size + target.size) {
-            game.score += 1;
-            player.speed = Math.min(player.speed + 0.15, 7.5);
-            this.updateEasterEggScore();
-            this.spawnEasterEggTarget();
-        }
-    }
-
-    drawEasterEggFrame() {
-        const canvas = this.elements.easterEggCanvas;
-        if (!canvas)
-            return;
-
-        const ctx = canvas.getContext('2d');
-        const game = this.easterEggGame;
-
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
-        gradient.addColorStop(0, '#0f1c3d');
-        gradient.addColorStop(1, '#092037');
-        ctx.fillStyle = gradient;
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-        ctx.strokeStyle = 'rgba(255,255,255,0.08)';
-        ctx.lineWidth = 1;
-        for (let x = 20; x < canvas.width; x += 40) {
-            ctx.beginPath();
-            ctx.moveTo(x, 0);
-            ctx.lineTo(x, canvas.height);
-            ctx.stroke();
-        }
-        for (let y = 20; y < canvas.height; y += 40) {
-            ctx.beginPath();
-            ctx.moveTo(0, y);
-            ctx.lineTo(canvas.width, y);
-            ctx.stroke();
-        }
-
-        const { player, target } = game;
-        ctx.fillStyle = '#f4b400';
-        ctx.beginPath();
-        ctx.moveTo(target.x, target.y - target.size);
-        ctx.lineTo(target.x - target.size * 0.6, target.y + target.size * 0.2);
-        ctx.lineTo(target.x - target.size * 0.2, target.y + target.size * 0.2);
-        ctx.lineTo(target.x - target.size, target.y + target.size);
-        ctx.lineTo(target.x + target.size * 0.2, target.y + target.size * 0.2);
-        ctx.lineTo(target.x + target.size * 0.6, target.y - target.size * 0.8);
-        ctx.closePath();
-        ctx.fill();
-        ctx.strokeStyle = 'rgba(0,0,0,0.2)';
-        ctx.lineWidth = 1.2;
-        ctx.stroke();
-
-        const carWidth = player.size * 2.4;
-        const carHeight = player.size * 1.4;
-        const carX = player.x - carWidth / 2;
-        const carY = player.y - carHeight / 2;
-
-        const carGradient = ctx.createLinearGradient(carX, carY, carX + carWidth, carY + carHeight);
-        carGradient.addColorStop(0, '#e30a18');
-        carGradient.addColorStop(1, '#f48221');
-        ctx.fillStyle = carGradient;
-
-        ctx.beginPath();
-        ctx.moveTo(carX + carWidth * 0.15, carY + carHeight);
-        ctx.lineTo(carX + carWidth * 0.15, carY + carHeight * 0.55);
-        ctx.lineTo(carX + carWidth * 0.35, carY + carHeight * 0.25);
-        ctx.lineTo(carX + carWidth * 0.65, carY + carHeight * 0.25);
-        ctx.lineTo(carX + carWidth * 0.85, carY + carHeight * 0.55);
-        ctx.lineTo(carX + carWidth * 0.85, carY + carHeight);
-        ctx.closePath();
-        ctx.fill();
-        ctx.strokeStyle = 'rgba(255,255,255,0.35)';
-        ctx.lineWidth = 2;
-        ctx.stroke();
-
-        const wheelRadius = player.size * 0.35;
-        const wheelY = carY + carHeight;
-        ctx.fillStyle = '#0d1221';
-        ctx.beginPath();
-        ctx.arc(carX + carWidth * 0.28, wheelY, wheelRadius, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.beginPath();
-        ctx.arc(carX + carWidth * 0.72, wheelY, wheelRadius, 0, Math.PI * 2);
-        ctx.fill();
-
-        ctx.fillStyle = 'rgba(255,255,255,0.35)';
-        ctx.fillRect(carX + carWidth * 0.42, carY + carHeight * 0.32, carWidth * 0.22, carHeight * 0.2);
-    }
-
-    spawnEasterEggTarget() {
-        const canvas = this.elements.easterEggCanvas;
-        if (!canvas)
-            return;
-
-        const target = this.easterEggGame.target;
-        const player = this.easterEggGame.player;
-        const padding = target.size + 12;
-        let attempts = 0;
-        do {
-            target.x = padding + Math.random() * (canvas.width - padding * 2);
-            target.y = padding + Math.random() * (canvas.height - padding * 2);
-            attempts++;
-        } while (Math.hypot(player.x - target.x, player.y - target.y) < player.size * 2 && attempts < 12);
-    }
-
-    updateEasterEggScore() {
-        if (!this.elements.easterEggScore)
-            return;
-        this.elements.easterEggScore.textContent = this.t('easterEgg.score', { score: this.easterEggGame.score });
     }
 
     sanitizeFilename(value) {

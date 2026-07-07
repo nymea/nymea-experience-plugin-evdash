@@ -5,17 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>EV Dash</title>
     <link rel="icon" type="image/x-icon" href="styles/pce/favicon.ico">
+    <link rel="stylesheet" href="styles/pce/theme.css">
     <style>
         :root {
-            --primary-color: #e30a18;
-            --secondary-color: #a20d17;
-            --accent-color: #f4b400;
-            --surface-color: #ffffff;
-            --background-color: #58616b;
-            --text-color: #222222;
-            --muted-text-color: #3342538a;
-            --green-color: #2ecc71;
-            --red-color: #e30a18;
             --sidebar-width: clamp(200px, 22vw, 320px);
         }
 
@@ -215,7 +207,7 @@
         }
 
         .side-nav-button.active {
-            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            background: var(--brand-gradient);
             color: #ffffff;
             box-shadow: 0 18px 28px rgba(227, 10, 24, 0.25);
         }
@@ -390,15 +382,14 @@
             white-space: nowrap;
         }
 
-        .session-attribution,
-        .rfid-attribution {
+        .session-attribution {
             display: inline-flex;
             align-items: center;
             gap: 0.35rem;
             min-width: 0;
         }
 
-        .rfid-icon {
+        .session-origin-icon {
             width: 1.1rem;
             height: 1.1rem;
             flex: 0 0 auto;
@@ -570,7 +561,7 @@
         }
 
         button.primary {
-            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            background: var(--brand-gradient);
             color: #ffffff;
             box-shadow: 0 10px 24px rgba(0, 80, 160, 0.26);
         }
@@ -812,8 +803,7 @@
                                         <th scope="col" data-i18n="sessions.columns.name">Name</th>
                                         <th scope="col" data-i18n="sessions.columns.charger">Charger</th>
                                         <th scope="col" data-i18n="sessions.columns.car">Car</th>
-                                        <th scope="col" data-i18n="sessions.columns.startedBy">Started by</th>
-                                        <th scope="col" data-i18n="sessions.columns.rfidTag">RFID tag</th>
+                                        <th scope="col" data-i18n="sessions.columns.user">User</th>
                                         <th scope="col" data-i18n="sessions.columns.start">Start</th>
                                         <th scope="col" data-i18n="sessions.columns.end">End</th>
                                         <th scope="col" data-i18n="sessions.columns.energy">Energy (kWh)</th>
@@ -821,7 +811,7 @@
                                 </thead>
                                 <tbody id="chargingSessionsTableBody">
                                     <tr id="chargingSessionsEmptyRow" class="empty-row">
-                                        <td colspan="8" data-i18n="sessions.emptyFetched">No charging sessions fetched yet.</td>
+                                        <td colspan="7" data-i18n="sessions.emptyFetched">No charging sessions fetched yet.</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -955,6 +945,8 @@
         </div>
     </section>
 
+    <script src="i18n.js"></script>
+    <script src="easter-egg.js"></script>
     <script src="app.js"></script>
 </body>
 </html>
