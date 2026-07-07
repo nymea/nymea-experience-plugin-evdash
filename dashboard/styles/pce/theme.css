@@ -1,0 +1,16 @@
+/* Brand palette for the PCE (chargebyte) theme.
+   A new brand ships its own styles/<brand>/theme.css with the same
+   custom properties; index.html/help.html only need their stylesheet
+   link swapped to that folder. */
+:root {
+    --primary-color: #e30a18;
+    --secondary-color: #a20d17;
+    --accent-color: #f4b400;
+    --surface-color: #ffffff;
+    --background-color: #58616b;
+    --text-color: #222222;
+    --muted-text-color: #3342538a;
+    --green-color: #2ecc71;
+    --red-color: #e30a18;
+    --brand-gradient: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+}
