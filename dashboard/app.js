@@ -14,6 +14,9 @@ class DashboardApp {
             statusDot: document.getElementById('statusDot'),
             connectionStatus: document.getElementById('connectionStatus'),
             sessionUsername: document.getElementById('sessionUsername'),
+            backendVersion: document.getElementById('backendVersion'),
+            dashboardVersion: document.getElementById('dashboardVersion'),
+            copyrightYear: document.getElementById('copyrightYear'),
             logoutButton: document.getElementById('logoutButton'),
             easterEggOverlay: document.getElementById('easterEggOverlay'),
             easterEggCanvas: document.getElementById('easterEggCanvas'),
@@ -456,6 +459,7 @@ class DashboardApp {
         this.resetChargerTable();
         this.updateCarSelector();
         this.renderChargingSessions([], this.t('sessions.emptyFetched'));
+        this.updateBuildMetadata();
 
         try {
             window.localStorage.removeItem(this.sessionKey);
@@ -550,7 +554,7 @@ class DashboardApp {
 
         if (type === 'authenticate') {
             if (data.success)
-                this.onAuthenticationSucceeded();
+                this.onAuthenticationSucceeded(data.payload || {});
             else
                 this.onAuthenticationFailed(data.error || 'unauthorized');
             return true;
@@ -668,12 +672,23 @@ class DashboardApp {
         }
     }
 
-    onAuthenticationSucceeded() {
+    onAuthenticationSucceeded(payload) {
+        this.updateBuildMetadata(payload);
         this.updateConnectionStatus(this.t('connection.connected'), 'connected');
         this.updateSessionUser();
         this.sendGetCars();
         this.sendGetChargers();
         this.fetchChargingSessions();
+    }
+
+    updateBuildMetadata(payload = {}) {
+        const metadata = payload && typeof payload === 'object' ? payload : {};
+        if (this.elements.backendVersion)
+            this.elements.backendVersion.textContent = this.formatSessionText(metadata.backendVersion) || '—';
+        if (this.elements.dashboardVersion)
+            this.elements.dashboardVersion.textContent = this.formatSessionText(metadata.dashboardVersion) || '—';
+        if (this.elements.copyrightYear)
+            this.elements.copyrightYear.textContent = this.formatSessionText(metadata.copyrightYear) || '—';
     }
 
     onAuthenticationFailed(reason) {
@@ -1205,9 +1220,15 @@ class DashboardApp {
             if (!entries.has(value)) {
                 entries.set(value, {
                     value,
-                    label: user.username,
-                    sortKey: user.username.toLowerCase()
+                    label: user.displayName,
+                    sortKey: user.displayName.toLowerCase(),
+                    hasDisplayName: user.hasDisplayName
                 });
+            } else if (user.hasDisplayName && !entries.get(value).hasDisplayName) {
+                const entry = entries.get(value);
+                entry.label = user.displayName;
+                entry.sortKey = user.displayName.toLowerCase();
+                entry.hasDisplayName = true;
             }
         });
 
@@ -1648,7 +1669,7 @@ class DashboardApp {
         }
 
         const label = document.createElement('span');
-        label.textContent = user.username;
+        label.textContent = user.displayName;
         wrapper.appendChild(label);
 
         cell.appendChild(wrapper);
@@ -1713,20 +1734,40 @@ class DashboardApp {
         if (!session || typeof session !== 'object')
             return null;
 
-        const triggerUsername = this.formatSessionText(session.triggerUsername)
-            || this.formatSessionText(session.triggerDisplayName);
-        const authorizedUsername = this.formatSessionText(session.authorizedUsername)
-            || this.formatSessionText(session.authorizedDisplayName);
+        const triggerUsername = this.formatSessionText(session.triggerUsername);
+        const triggerDisplayName = this.formatSessionText(session.triggerDisplayName);
+        const triggerIdentifier = triggerUsername || triggerDisplayName;
+        const authorizedUsername = this.formatSessionText(session.authorizedUsername);
+        const authorizedDisplayName = this.formatSessionText(session.authorizedDisplayName);
+        const authorizedIdentifier = authorizedUsername || authorizedDisplayName;
         const authorizedTagHash = this.formatSessionText(session.authorizedTagHash);
 
-        if (authorizedTagHash && authorizedUsername)
-            return { username: authorizedUsername, method: 'rfid' };
+        if (authorizedTagHash && authorizedIdentifier) {
+            return {
+                username: authorizedIdentifier,
+                displayName: authorizedDisplayName || authorizedIdentifier,
+                hasDisplayName: !!authorizedDisplayName,
+                method: 'rfid'
+            };
+        }
 
-        if (triggerUsername)
-            return { username: triggerUsername, method: 'manual' };
+        if (triggerIdentifier) {
+            return {
+                username: triggerIdentifier,
+                displayName: triggerDisplayName || triggerIdentifier,
+                hasDisplayName: !!triggerDisplayName,
+                method: 'manual'
+            };
+        }
 
-        if (authorizedUsername)
-            return { username: authorizedUsername, method: 'manual' };
+        if (authorizedIdentifier) {
+            return {
+                username: authorizedIdentifier,
+                displayName: authorizedDisplayName || authorizedIdentifier,
+                hasDisplayName: !!authorizedDisplayName,
+                method: 'manual'
+            };
+        }
 
         return null;
     }

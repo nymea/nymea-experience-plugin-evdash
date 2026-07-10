@@ -15,7 +15,8 @@ window.EvDashTranslations = {
         'sidebar.sessionsSubtitle': 'History of charging sessions',
         'sidebar.help': 'Help',
         'sidebar.helpSubtitle': 'How to use the dashboard',
-        'sidebar.version': 'Version',
+        'sidebar.backendVersion': 'Backend version',
+        'sidebar.dashboardVersion': 'Dashboard version',
 
         'chargers.liveOverview': 'Live overview',
         'chargers.title': 'Chargers',
@@ -197,7 +198,8 @@ window.EvDashTranslations = {
         'sidebar.sessionsSubtitle': 'Historie der Ladevorgänge',
         'sidebar.help': 'Hilfe',
         'sidebar.helpSubtitle': 'So nutzt du das Dashboard',
-        'sidebar.version': 'Version',
+        'sidebar.backendVersion': 'Backend-Version',
+        'sidebar.dashboardVersion': 'Dashboard-Version',
 
         'chargers.liveOverview': 'Live-Übersicht',
         'chargers.title': 'Ladestationen',
