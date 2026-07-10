@@ -404,7 +404,12 @@ QJsonObject EvDashEngine::handleApiRequest(QWebSocket *socket, const QJsonObject
 
         m_authenticatedClients.insert(socket, token);
 
-        QJsonObject responsePayload{{QStringLiteral("authenticated"), true}, {QStringLiteral("timestamp"), QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs)}};
+        QJsonObject responsePayload{
+            {QStringLiteral("authenticated"), true},
+            {QStringLiteral("backendVersion"), QStringLiteral(EVDASH_BACKEND_VERSION)},
+            {QStringLiteral("dashboardVersion"), QStringLiteral(EVDASH_DASHBOARD_VERSION)},
+            {QStringLiteral("copyrightYear"), QStringLiteral(EVDASH_COPYRIGHT_YEAR)},
+            {QStringLiteral("timestamp"), QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs)}};
         return createSuccessResponse(requestId, responsePayload);
     }
 

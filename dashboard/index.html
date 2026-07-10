@@ -223,9 +223,17 @@
         }
 
         .side-panel-footer {
+            display: grid;
+            gap: 0.25rem;
             margin-top: auto;
             font-size: 0.85rem;
             color: var(--muted-text-color);
+        }
+
+        .version-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 1rem;
         }
 
         .content-area {
@@ -728,7 +736,14 @@
                 </button>
             </nav>
             <div class="side-panel-footer">
-                <span data-i18n="sidebar.version">Version</span> 1.0.0
+                <div class="version-row">
+                    <span data-i18n="sidebar.backendVersion">Backend version</span>
+                    <span id="backendVersion">—</span>
+                </div>
+                <div class="version-row">
+                    <span data-i18n="sidebar.dashboardVersion">Dashboard version</span>
+                    <span id="dashboardVersion">—</span>
+                </div>
             </div>
         </aside>
 
@@ -905,7 +920,7 @@
         </main>
 
         <footer>
-            <span id="appVersion">EV Dash</span> · &copy; 2025 chargebyte GmbH. All rights reserved.
+            <span id="appVersion">EV Dash</span> · &copy; <span id="copyrightYear">—</span> chargebyte GmbH. All rights reserved.
         </footer>
     </div>
 
