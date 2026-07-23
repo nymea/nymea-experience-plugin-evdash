@@ -203,13 +203,13 @@
 
         .side-nav-button:hover {
             transform: translateY(-1px);
-            box-shadow: 0 10px 18px rgba(0, 0, 0, 0.08);
+            box-shadow: 0 3px 7px rgba(0, 0, 0, 0.08);
         }
 
         .side-nav-button.active {
             background: var(--brand-gradient);
             color: #ffffff;
-            box-shadow: 0 18px 28px rgba(227, 10, 24, 0.25);
+            box-shadow: 0 3px 7px rgba(227, 10, 24, 0.18);
         }
 
         .side-nav-button.active .side-nav-subtitle {
@@ -571,7 +571,7 @@
         button.primary {
             background: var(--brand-gradient);
             color: #ffffff;
-            box-shadow: 0 10px 24px rgba(0, 80, 160, 0.26);
+            box-shadow: 0 2px 5px rgba(0, 80, 160, 0.18);
         }
 
         button.primary:disabled {
@@ -582,7 +582,30 @@
 
         button.primary:not(:disabled):hover {
             transform: translateY(-1px);
-            box-shadow: 0 16px 32px rgba(0, 80, 160, 0.28);
+            box-shadow: 0 4px 8px rgba(0, 80, 160, 0.2);
+        }
+
+        button.tool-button {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 44px;
+            height: 44px;
+            padding: 0;
+            border: 1px solid #d3dce6;
+            border-radius: 10px;
+            background: #f9fbfd;
+            color: var(--text-color);
+        }
+
+        button.tool-button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 3px 7px rgba(0, 0, 0, 0.1);
+        }
+
+        button.tool-button svg {
+            width: 22px;
+            height: 22px;
         }
 
         .error-message {
@@ -806,8 +829,13 @@
                                 <input type="date" id="sessionStartFilter" name="sessionStartFilter">
                                 <label class="sr-only" for="sessionEndFilter" data-i18n="sessions.filterEndDate">End date</label>
                                 <input type="date" id="sessionEndFilter" name="sessionEndFilter">
-                                <button type="button" id="fetchSessionsButton" class="primary" data-i18n="sessions.fetch">Refresh view</button>
-                                <button type="button" id="downloadSessionsButton" data-i18n="sessions.downloadCsv">Download CSV</button>
+                                <button type="button" id="fetchSessionsButton" class="tool-button" data-i18n="sessions.fetch" data-i18n-attr="title">
+                                    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                                        <path fill="currentColor" d="M17.65 6.35A7.95 7.95 0 0 0 12 4a8 8 0 1 0 7.75 10h-2.1A6 6 0 1 1 12 6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35Z"/>
+                                    </svg>
+                                    <span class="sr-only" data-i18n="sessions.fetch">Refresh view</span>
+                                </button>
+                                <button type="button" id="downloadSessionsButton" class="primary" data-i18n="sessions.downloadCsv">Download CSV</button>
                             </div>
                         </div>
                         <p class="helper-text" data-i18n="sessions.helper">Optionally filter charging sessions by charger, car, user and time range before downloading.</p>
