@@ -1,3 +1,10 @@
+nymea-experience-plugin-evdash (1.17.0) resolute; urgency=medium
+
+  [ Simon Stürz ]
+  * Add session user information and optionally RFID infos
+
+ -- jenkins <developer@nymea.io>  Mon, 31 Aug 2026 11:07:20 +0200
+
 nymea-experience-plugin-evdash (1.16.0) resolute; urgency=medium
 
 
