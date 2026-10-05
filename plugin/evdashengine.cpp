@@ -321,7 +321,8 @@ void EvDashEngine::stopWebSocketServer()
     if (m_webSocketServer->isListening())
         m_webSocketServer->close();
 
-    for (QWebSocket *client : qAsConst(m_clients)) {
+    const QList<QWebSocket *> clients = m_clients;
+    for (QWebSocket *client : clients) {
         if (client->state() == QAbstractSocket::ConnectedState)
             client->close(QWebSocketProtocol::CloseCodeGoingAway, QStringLiteral("Server shutting down"));
 
@@ -403,7 +404,12 @@ QJsonObject EvDashEngine::handleApiRequest(QWebSocket *socket, const QJsonObject
 
         m_authenticatedClients.insert(socket, token);
 
-        QJsonObject responsePayload{{QStringLiteral("authenticated"), true}, {QStringLiteral("timestamp"), QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs)}};
+        QJsonObject responsePayload{
+            {QStringLiteral("authenticated"), true},
+            {QStringLiteral("backendVersion"), QStringLiteral(EVDASH_BACKEND_VERSION)},
+            {QStringLiteral("dashboardVersion"), QStringLiteral(EVDASH_DASHBOARD_VERSION)},
+            {QStringLiteral("copyrightYear"), QStringLiteral(EVDASH_COPYRIGHT_YEAR)},
+            {QStringLiteral("timestamp"), QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs)}};
         return createSuccessResponse(requestId, responsePayload);
     }
 
@@ -482,7 +488,8 @@ void EvDashEngine::sendReply(QWebSocket *socket, QJsonObject response) const
 void EvDashEngine::sendNotification(const QString &notification, QJsonObject payload) const
 {
     // Send to all active clients
-    for (QWebSocket *client : qAsConst(m_clients)) {
+    const QList<QWebSocket *> clients = m_clients;
+    for (QWebSocket *client : clients) {
         if (m_authenticatedClients.value(client).isEmpty())
             continue;
 
@@ -574,6 +581,15 @@ QJsonObject EvDashEngine::packCharger(Thing *charger) const
 
     if (charger->hasState("digitalInputMode"))
         chargerObject.insert("digitalInputMode", charger->stateValue("digitalInputMode").toInt());
+
+    if (charger->hasState("authorizedUsername"))
+        chargerObject.insert("authorizedUsername", charger->stateValue("authorizedUsername").toString());
+
+    if (charger->hasState("authorizedDisplayName"))
+        chargerObject.insert("authorizedDisplayName", charger->stateValue("authorizedDisplayName").toString());
+
+    if (charger->hasState("authorizedTagHash"))
+        chargerObject.insert("authorizedTagHash", charger->stateValue("authorizedTagHash").toString());
 
     return chargerObject;
 }

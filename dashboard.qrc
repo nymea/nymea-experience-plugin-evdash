@@ -2,11 +2,14 @@
     <qresource prefix="/dashboard"/>
     <qresource prefix="/">
         <file>dashboard/app.js</file>
+        <file>dashboard/i18n.js</file>
+        <file>dashboard/easter-egg.js</file>
         <file>dashboard/index.html</file>
         <file>dashboard/help.html</file>
         <file>dashboard/styles/pce/favicon.ico</file>
         <file>dashboard/styles/pce/icon.png</file>
         <file>dashboard/styles/pce/icon.svg</file>
+        <file>dashboard/styles/pce/theme.css</file>
         <file>dashboard/icons/user.svg</file>
     </qresource>
 </RCC>
