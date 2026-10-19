@@ -58,7 +58,6 @@ public:
 
 signals:
     void enabledChanged(bool enabled);
-    void webSocketListeningChanged(bool listening);
 
 private slots:
     void onThingAdded(Thing *thing);
@@ -75,7 +74,6 @@ private:
     ChargingSessionsDBusInterfaceClient *m_chargingSessionsClient = nullptr;
 
     QWebSocketServer *m_webSocketServer = nullptr;
-    quint16 m_webSocketPort = 4449;
 
     QList<QWebSocket *> m_clients;
     QHash<QWebSocket *, QString> m_authenticatedClients;
@@ -96,8 +94,7 @@ private:
     bool isCarThing(Thing *thing) const;
 
     // Websocket server
-    bool startWebSocketServer(quint16 port = 0);
-    void stopWebSocketServer();
+    void closeWebSocketClients();
     void processTextMessage(QWebSocket *socket, const QString &message);
 
     // Websocket API

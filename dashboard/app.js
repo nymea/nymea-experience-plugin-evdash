@@ -836,10 +836,7 @@ class DashboardApp {
         clearTimeout(this.reconnectTimer);
         this.updateConnectionStatus(this.t('connection.connecting'), 'connecting');
         const protocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
-        const host = window.location.hostname || 'localhost';
-        const port = 4449;
-        const normalizedHost = host.includes(':') ? `[${host}]` : host;
-        const url = `${protocol}${normalizedHost}:${port}`;
+        const url = `${protocol}${window.location.host}/evdash/ws`;
 
         this.socket = new WebSocket(url);
         this.socket.addEventListener('open', () => {
