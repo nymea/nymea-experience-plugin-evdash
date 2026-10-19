@@ -28,6 +28,7 @@
 #include <QDateTime>
 #include <QHash>
 #include <QObject>
+#include <QPointer>
 #include <QString>
 
 #include <webserver/webserverresource.h>
@@ -35,6 +36,7 @@
 #include "evdashengine.h"
 
 class QJsonObject;
+class QWebSocketServer;
 
 class EvDashWebServerResource : public WebServerResource
 {
@@ -43,6 +45,9 @@ public:
     explicit EvDashWebServerResource(QObject *parent = nullptr);
 
     HttpReply *processRequest(const HttpRequest &request) override;
+    bool handleWebSocketUpgrade(QTcpSocket *socket, const HttpRequest &request) override;
+
+    void setWebSocketServer(QWebSocketServer *webSocketServer);
 
     // User management
     QStringList usernames() const;
@@ -72,6 +77,8 @@ private:
 
     static constexpr int s_tokenLifetimeSeconds = 3600;
     static constexpr int s_minimalPasswordLength = 4;
+
+    QPointer<QWebSocketServer> m_webSocketServer;
 
     QHash<QString, UserInfo> m_users;
     QHash<QString, TokenInfo> m_activeTokens;

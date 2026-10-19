@@ -32,6 +32,7 @@
 #include <QJsonParseError>
 #include <QRegularExpression>
 #include <QUuid>
+#include <QWebSocketServer>
 
 #include <QLoggingCategory>
 Q_DECLARE_LOGGING_CATEGORY(dcEvDashExperience)
@@ -95,6 +96,20 @@ HttpReply *EvDashWebServerResource::processRequest(const HttpRequest &request)
     // If nothing matches, redirect to main page
     qCWarning(dcEvDashExperience()) << "Resource for debug interface not found. Redirecting to main page...";
     return redirectToIndex();
+}
+
+bool EvDashWebServerResource::handleWebSocketUpgrade(QTcpSocket *socket, const HttpRequest &request)
+{
+    if (!enabled() || !m_webSocketServer || request.url().path() != basePath() + QStringLiteral("/ws"))
+        return false;
+
+    m_webSocketServer->handleConnection(socket);
+    return true;
+}
+
+void EvDashWebServerResource::setWebSocketServer(QWebSocketServer *webSocketServer)
+{
+    m_webSocketServer = webSocketServer;
 }
 
 QStringList EvDashWebServerResource::usernames() const

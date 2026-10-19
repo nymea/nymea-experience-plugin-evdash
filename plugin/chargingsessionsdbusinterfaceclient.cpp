@@ -69,7 +69,13 @@ void ChargingSessionsDBusInterfaceClient::getSessions(const QStringList &carThin
         return;
     }
 
-    QDBusPendingCall call = m_interface->asyncCall(QStringLiteral("GetSessions"), carThingIds, startTimestamp, endTimestamp);
+    QDBusPendingCall call = m_interface->asyncCall(QStringLiteral("GetSessions"),
+                                                   carThingIds,
+                                                   startTimestamp,
+                                                   endTimestamp,
+                                                   QString(),
+                                                   QString(),
+                                                   QString());
     QDBusPendingCallWatcher *watcher = new QDBusPendingCallWatcher(call, this);
     connect(watcher, &QDBusPendingCallWatcher::finished, this, &ChargingSessionsDBusInterfaceClient::onCallFinished);
 }
