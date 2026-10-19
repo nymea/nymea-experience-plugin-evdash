@@ -6,7 +6,7 @@ Standards-Version: 4.7.2
 Homepage: https://nymea.io
 Build-Depends: debhelper,
                dpkg-dev,
-               libnymea-dev (>= 1.14.0),
+               libnymea-dev (>= 1.17.0),
                nymea-dev-tools:native,
                qt6-base-dev,
                qt6-base-dev-tools,

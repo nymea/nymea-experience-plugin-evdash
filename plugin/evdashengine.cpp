@@ -69,8 +69,9 @@ EvDashEngine::EvDashEngine(ThingManager *thingManager, LogEngine *logEngine, EvD
     connect(m_thingManager, &ThingManager::thingRemoved, this, &EvDashEngine::onThingRemoved);
     connect(m_thingManager, &ThingManager::thingChanged, this, &EvDashEngine::onThingChanged);
 
-    // Setup websocket server
+    // Setup websocket server. Not listening on a dedicated port, the nymea web server hands over upgrade requests for /evdash/ws
     m_webSocketServer = new QWebSocketServer(QStringLiteral("EvDashEngine"), QWebSocketServer::NonSecureMode, this);
+    m_webServerResource->setWebSocketServer(m_webSocketServer);
 
     connect(m_webSocketServer, &QWebSocketServer::newConnection, this, [this]() {
         QWebSocket *socket = m_webSocketServer->nextPendingConnection();
@@ -93,13 +94,8 @@ EvDashEngine::EvDashEngine(ThingManager *thingManager, LogEngine *logEngine, EvD
         qCDebug(dcEvDashExperience()) << "WebSocket client connected" << socket->peerAddress().toString() << "Total clients:" << m_clients.count();
     });
 
-    connect(m_webSocketServer, &QWebSocketServer::acceptError, this, [this](QAbstractSocket::SocketError error) {
-        qCWarning(dcEvDashExperience()) << "WebSocket accept error" << error << m_webSocketServer->errorString();
-    });
-
     EvDashSettings settings;
     settings.beginGroup("General");
-    m_webSocketPort = settings.value("webSocketServerPort", 4449).toUInt();
     bool enabled = settings.value("enabled", false).toBool();
     settings.endGroup();
 
@@ -153,7 +149,7 @@ EvDashEngine::EvDashEngine(ThingManager *thingManager, LogEngine *logEngine, EvD
 
 EvDashEngine::~EvDashEngine()
 {
-    stopWebSocketServer();
+    closeWebSocketClients();
 }
 
 bool EvDashEngine::enabled() const
@@ -165,13 +161,8 @@ bool EvDashEngine::setEnabled(bool enabled)
 {
     m_enabled = enabled;
 
-    if (m_enabled) {
-        if (!startWebSocketServer(m_webSocketPort)) {
-            return false;
-        }
-    } else {
-        stopWebSocketServer();
-    }
+    if (!m_enabled)
+        closeWebSocketClients();
 
     qCDebug(dcEvDashExperience()) << "The EV Dash service is now" << (enabled ? "enabled" : "disabled");
     m_webServerResource->setEnabled(m_enabled);
@@ -296,31 +287,8 @@ void EvDashEngine::verifyChargerStatusChanged(Thing *charger)
     });
 }
 
-bool EvDashEngine::startWebSocketServer(quint16 port)
+void EvDashEngine::closeWebSocketClients()
 {
-    if (m_webSocketServer->isListening()) {
-        if (m_webSocketServer->serverPort() == port && port != 0)
-            return true;
-
-        m_webSocketServer->close();
-    }
-
-    const bool listening = m_webSocketServer->listen(QHostAddress::AnyIPv4, port);
-    if (listening) {
-        qCDebug(dcEvDashExperience()) << "WebSocket server listening on" << m_webSocketServer->serverAddress() << m_webSocketServer->serverPort();
-    } else {
-        qCWarning(dcEvDashExperience()) << "Failed to start WebSocket server" << m_webSocketServer->errorString();
-    }
-
-    emit webSocketListeningChanged(listening);
-    return listening;
-}
-
-void EvDashEngine::stopWebSocketServer()
-{
-    if (m_webSocketServer->isListening())
-        m_webSocketServer->close();
-
     for (QWebSocket *client : qAsConst(m_clients)) {
         if (client->state() == QAbstractSocket::ConnectedState)
             client->close(QWebSocketProtocol::CloseCodeGoingAway, QStringLiteral("Server shutting down"));
