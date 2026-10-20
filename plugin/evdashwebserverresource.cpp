@@ -83,7 +83,7 @@ HttpReply *EvDashWebServerResource::processRequest(const HttpRequest &request)
     // Redirect base url to index
     if (path == basePath() || path == basePath() + QStringLiteral("/")) {
         qCDebug(dcEvDashExperience()) << "Base URL called, redirect to main page...";
-        return redirectToIndex();
+        return redirectToIndex(path);
     }
 
     // Check if this is a static file we can provide
@@ -95,7 +95,7 @@ HttpReply *EvDashWebServerResource::processRequest(const HttpRequest &request)
 
     // If nothing matches, redirect to main page
     qCWarning(dcEvDashExperience()) << "Resource for debug interface not found. Redirecting to main page...";
-    return redirectToIndex();
+    return redirectToIndex(path);
 }
 
 bool EvDashWebServerResource::handleWebSocketUpgrade(QTcpSocket *socket, const HttpRequest &request)
@@ -178,10 +178,20 @@ EvDashEngine::EvDashError EvDashWebServerResource::removeUser(const QString &use
     return EvDashEngine::EvDashErrorNoError;
 }
 
-HttpReply *EvDashWebServerResource::redirectToIndex()
+HttpReply *EvDashWebServerResource::redirectToIndex(const QString &requestPath)
 {
     HttpReply *reply = HttpReply::createErrorReply(HttpReply::PermanentRedirect);
-    reply->setHeader(HttpReply::LocationHeader, QString(basePath() + "/index.html").toLocal8Bit());
+    // A relative Location keeps the public prefix when the proxy strips it.
+    QString location;
+    if (requestPath == basePath()) {
+        location = "evdash/index.html";
+    } else {
+        const int depth = requestPath.mid(basePath().size() + 1).count('/');
+        for (int i = 0; i < depth; ++i)
+            location += "../";
+        location += "index.html";
+    }
+    reply->setHeader(HttpReply::LocationHeader, location.toUtf8());
     return reply;
 }
 

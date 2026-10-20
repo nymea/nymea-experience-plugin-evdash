@@ -30,6 +30,7 @@
 #include <QObject>
 #include <QPointer>
 #include <QString>
+#include <QTcpSocket>
 
 #include <webserver/webserverresource.h>
 
@@ -85,7 +86,7 @@ private:
 
     HttpReply *handleLoginRequest(const HttpRequest &request);
     HttpReply *handleRefreshRequest(const HttpRequest &request);
-    HttpReply *redirectToIndex();
+    HttpReply *redirectToIndex(const QString &requestPath);
 
     QString issueToken(const QString &username);
     void purgeExpiredTokens();
