@@ -15,7 +15,7 @@ window.EvDashTranslations = {
         'sidebar.sessionsSubtitle': 'History of charging sessions',
         'sidebar.help': 'Help',
         'sidebar.helpSubtitle': 'How to use the dashboard',
-        'sidebar.backendVersion': 'Backend version',
+        'sidebar.backendVersion': 'nymea core version',
         'sidebar.dashboardVersion': 'Dashboard version',
 
         'chargers.liveOverview': 'Live overview',
@@ -198,7 +198,7 @@ window.EvDashTranslations = {
         'sidebar.sessionsSubtitle': 'Historie der Ladevorgänge',
         'sidebar.help': 'Hilfe',
         'sidebar.helpSubtitle': 'So nutzt du das Dashboard',
-        'sidebar.backendVersion': 'Backend-Version',
+        'sidebar.backendVersion': 'nymea-Core-Version',
         'sidebar.dashboardVersion': 'Dashboard-Version',
 
         'chargers.liveOverview': 'Live-Übersicht',
