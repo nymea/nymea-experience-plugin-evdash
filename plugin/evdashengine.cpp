@@ -69,8 +69,9 @@ EvDashEngine::EvDashEngine(ThingManager *thingManager, LogEngine *logEngine, EvD
     connect(m_thingManager, &ThingManager::thingRemoved, this, &EvDashEngine::onThingRemoved);
     connect(m_thingManager, &ThingManager::thingChanged, this, &EvDashEngine::onThingChanged);
 
-    // Setup websocket server
+    // Setup websocket server. Not listening on a dedicated port, the nymea web server hands over upgrade requests for /evdash/ws
     m_webSocketServer = new QWebSocketServer(QStringLiteral("EvDashEngine"), QWebSocketServer::NonSecureMode, this);
+    m_webServerResource->setWebSocketServer(m_webSocketServer);
 
     connect(m_webSocketServer, &QWebSocketServer::newConnection, this, [this]() {
         QWebSocket *socket = m_webSocketServer->nextPendingConnection();
@@ -93,13 +94,8 @@ EvDashEngine::EvDashEngine(ThingManager *thingManager, LogEngine *logEngine, EvD
         qCDebug(dcEvDashExperience()) << "WebSocket client connected" << socket->peerAddress().toString() << "Total clients:" << m_clients.count();
     });
 
-    connect(m_webSocketServer, &QWebSocketServer::acceptError, this, [this](QAbstractSocket::SocketError error) {
-        qCWarning(dcEvDashExperience()) << "WebSocket accept error" << error << m_webSocketServer->errorString();
-    });
-
     EvDashSettings settings;
     settings.beginGroup("General");
-    m_webSocketPort = settings.value("webSocketServerPort", 4449).toUInt();
     bool enabled = settings.value("enabled", false).toBool();
     settings.endGroup();
 
@@ -153,7 +149,7 @@ EvDashEngine::EvDashEngine(ThingManager *thingManager, LogEngine *logEngine, EvD
 
 EvDashEngine::~EvDashEngine()
 {
-    stopWebSocketServer();
+    closeWebSocketClients();
 }
 
 bool EvDashEngine::enabled() const
@@ -165,13 +161,8 @@ bool EvDashEngine::setEnabled(bool enabled)
 {
     m_enabled = enabled;
 
-    if (m_enabled) {
-        if (!startWebSocketServer(m_webSocketPort)) {
-            return false;
-        }
-    } else {
-        stopWebSocketServer();
-    }
+    if (!m_enabled)
+        closeWebSocketClients();
 
     qCDebug(dcEvDashExperience()) << "The EV Dash service is now" << (enabled ? "enabled" : "disabled");
     m_webServerResource->setEnabled(m_enabled);
@@ -296,32 +287,10 @@ void EvDashEngine::verifyChargerStatusChanged(Thing *charger)
     });
 }
 
-bool EvDashEngine::startWebSocketServer(quint16 port)
+void EvDashEngine::closeWebSocketClients()
 {
-    if (m_webSocketServer->isListening()) {
-        if (m_webSocketServer->serverPort() == port && port != 0)
-            return true;
-
-        m_webSocketServer->close();
-    }
-
-    const bool listening = m_webSocketServer->listen(QHostAddress::AnyIPv4, port);
-    if (listening) {
-        qCDebug(dcEvDashExperience()) << "WebSocket server listening on" << m_webSocketServer->serverAddress() << m_webSocketServer->serverPort();
-    } else {
-        qCWarning(dcEvDashExperience()) << "Failed to start WebSocket server" << m_webSocketServer->errorString();
-    }
-
-    emit webSocketListeningChanged(listening);
-    return listening;
-}
-
-void EvDashEngine::stopWebSocketServer()
-{
-    if (m_webSocketServer->isListening())
-        m_webSocketServer->close();
-
-    for (QWebSocket *client : qAsConst(m_clients)) {
+    const QList<QWebSocket *> clients = m_clients;
+    for (QWebSocket *client : clients) {
         if (client->state() == QAbstractSocket::ConnectedState)
             client->close(QWebSocketProtocol::CloseCodeGoingAway, QStringLiteral("Server shutting down"));
 
@@ -403,7 +372,12 @@ QJsonObject EvDashEngine::handleApiRequest(QWebSocket *socket, const QJsonObject
 
         m_authenticatedClients.insert(socket, token);
 
-        QJsonObject responsePayload{{QStringLiteral("authenticated"), true}, {QStringLiteral("timestamp"), QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs)}};
+        QJsonObject responsePayload{
+            {QStringLiteral("authenticated"), true},
+            {QStringLiteral("backendVersion"), QStringLiteral(EVDASH_BACKEND_VERSION)},
+            {QStringLiteral("dashboardVersion"), QStringLiteral(EVDASH_DASHBOARD_VERSION)},
+            {QStringLiteral("copyrightYear"), QStringLiteral(EVDASH_COPYRIGHT_YEAR)},
+            {QStringLiteral("timestamp"), QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs)}};
         return createSuccessResponse(requestId, responsePayload);
     }
 
@@ -482,7 +456,8 @@ void EvDashEngine::sendReply(QWebSocket *socket, QJsonObject response) const
 void EvDashEngine::sendNotification(const QString &notification, QJsonObject payload) const
 {
     // Send to all active clients
-    for (QWebSocket *client : qAsConst(m_clients)) {
+    const QList<QWebSocket *> clients = m_clients;
+    for (QWebSocket *client : clients) {
         if (m_authenticatedClients.value(client).isEmpty())
             continue;
 
@@ -574,6 +549,15 @@ QJsonObject EvDashEngine::packCharger(Thing *charger) const
 
     if (charger->hasState("digitalInputMode"))
         chargerObject.insert("digitalInputMode", charger->stateValue("digitalInputMode").toInt());
+
+    if (charger->hasState("authorizedUsername"))
+        chargerObject.insert("authorizedUsername", charger->stateValue("authorizedUsername").toString());
+
+    if (charger->hasState("authorizedDisplayName"))
+        chargerObject.insert("authorizedDisplayName", charger->stateValue("authorizedDisplayName").toString());
+
+    if (charger->hasState("authorizedTagHash"))
+        chargerObject.insert("authorizedTagHash", charger->stateValue("authorizedTagHash").toString());
 
     return chargerObject;
 }

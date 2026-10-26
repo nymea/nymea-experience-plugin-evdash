@@ -14,7 +14,8 @@ you will touch while working on tasks in this repository.
   - Contains the Qt/C++ implementation of the experience plugin.
   - `EvDashWebServerResource` is responsible for HTTP handling under `/evdash`, including REST endpoints such as the login flow and
     serving the compiled dashboard assets from `dashboard.qrc`.
-  - `EvDashEngine` runs the WebSocket server, receives JSON requests with `{ requestId, action, payload }`, authenticates clients via
+  - `EvDashEngine` owns the WebSocket server (no dedicated port: the nymea web server hands over upgrade requests for `/evdash/ws`
+    through `EvDashWebServerResource::handleWebSocketUpgrade()`), receives JSON requests with `{ requestId, action, payload }`, authenticates clients via
     session tokens and pushes live updates.
   - `EvDashJsonHandler` defines the JSON-RPC schema for nymea integration (keep new actions consistent with this handler).
 - `dashboard/`
