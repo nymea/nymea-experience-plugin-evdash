@@ -36,6 +36,7 @@
 #include <QWebSocketProtocol>
 #include <QWebSocketServer>
 
+#include <QCoreApplication>
 #include <QDateTime>
 #include <QJsonArray>
 #include <QJsonDocument>
@@ -374,7 +375,7 @@ QJsonObject EvDashEngine::handleApiRequest(QWebSocket *socket, const QJsonObject
 
         QJsonObject responsePayload{
             {QStringLiteral("authenticated"), true},
-            {QStringLiteral("backendVersion"), QStringLiteral(EVDASH_BACKEND_VERSION)},
+            {QStringLiteral("backendVersion"), QCoreApplication::applicationVersion()},
             {QStringLiteral("dashboardVersion"), QStringLiteral(EVDASH_DASHBOARD_VERSION)},
             {QStringLiteral("copyrightYear"), QStringLiteral(EVDASH_COPYRIGHT_YEAR)},
             {QStringLiteral("timestamp"), QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs)}};
