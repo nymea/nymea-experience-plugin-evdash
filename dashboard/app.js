@@ -381,7 +381,7 @@ class DashboardApp {
     async performLoginRequest(username, password) {
         let response;
         try {
-            response = await fetch('/evdash/api/login', {
+            response = await fetch('api/login', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -490,8 +490,8 @@ class DashboardApp {
 
         clearTimeout(this.reconnectTimer);
         this.updateConnectionStatus(this.t('connection.connecting'), 'connecting');
-        const protocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
-        const url = `${protocol}${window.location.host}/evdash/ws`;
+        const url = new URL('ws', window.location.href);
+        url.protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
 
         this.socket = new WebSocket(url);
         this.socket.addEventListener('open', () => {
@@ -2109,7 +2109,7 @@ class DashboardApp {
         this.refreshInFlight = true;
 
         try {
-            const response = await fetch('/evdash/api/refresh', {
+            const response = await fetch('api/refresh', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
